@@ -1,0 +1,105 @@
+import { Colors } from "../theme.slint";
+
+export component VDropdown inherits Rectangle {
+    in property <[string]> options: [];
+    in-out property <int> selected-index: 0;
+    in-out property <bool> open: false;
+    callback changed(int);
+
+    height: 36px;
+    border-radius: 4px;
+    background: root.open ? Colors.panel-hover : touch.has-hover ? Colors.panel-hover : Colors.panel;
+    border-width: 1px;
+    border-color: root.open ? Colors.accent : Colors.border;
+
+    animate background { duration: 100ms; }
+    animate border-color { duration: 100ms; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            if (root.open) {
+                root.open = false;
+            } else {
+                root.open = true;
+                popup.show();
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        Text {
+            text: root.options.length > 0 ? root.options[root.selected-index] : "No accounts";
+            color: Colors.text-primary;
+            font-size: 12px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+
+        // Chevron
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+
+            Image {
+                source: @image-url("../icons/chevron-down.svg");
+                width: 12px;
+                height: 12px;
+                colorize: Colors.text-muted;
+                transform-rotation: root.open ? 180deg : 0deg;
+                animate transform-rotation { duration: 200ms; easing: ease-in-out; }
+            }
+        }
+    }
+
+    // Dropdown popup
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 2px;
+        width: root.width;
+
+        Rectangle {
+            background: Colors.panel;
+            border-radius: 4px;
+            border-width: 1px;
+            border-color: Colors.border;
+
+            VerticalLayout {
+                spacing: 0px;
+
+                for option[idx] in root.options: Rectangle {
+                    height: 32px;
+                    background: idx == root.selected-index ? Colors.accent : opt-touch.has-hover ? Colors.panel-hover : transparent;
+                    animate background { duration: 80ms; }
+
+                    opt-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.selected-index = idx;
+                            root.open = false;
+                            root.changed(idx);
+                        }
+                    }
+
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+
+                        Text {
+                            text: option;
+                            color: idx == root.selected-index ? #FFFFFF : Colors.text-secondary;
+                            font-size: 12px;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

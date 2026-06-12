@@ -1,0 +1,127 @@
+import { Colors } from "../theme.slint";
+
+export component SidebarItem inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    in property <image> icon;
+    in property <bool> expanded: true;
+    callback clicked();
+
+    height: 36px;
+    border-radius: 4px;
+    background: root.active ? Colors.accent : touch.has-hover ? Colors.panel-hover : transparent;
+
+    animate background { duration: 100ms; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+
+            Image {
+                source: root.icon;
+                width: 16px;
+                height: 16px;
+                colorize: root.active ? #FFFFFF : Colors.text-secondary;
+            }
+        }
+
+        if root.expanded: Text {
+            text: root.label;
+            color: root.active ? #FFFFFF : Colors.text-secondary;
+            font-size: 12px;
+            font-weight: root.active ? 600 : 400;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+export component Sidebar inherits Rectangle {
+    in-out property <string> current-page: "accounts";
+    in-out property <bool> expanded: false;
+    callback navigate(string);
+
+    width: root.expanded ? 150px : 48px;
+    background: Colors.panel;
+
+    animate width {
+        duration: 200ms;
+        easing: ease-in-out;
+    }
+
+    VerticalLayout {
+        padding: 6px;
+        spacing: 2px;
+
+        // Nav items
+        SidebarItem {
+            label: "Accounts";
+            active: root.current-page == "accounts";
+            expanded: root.expanded;
+            icon: @image-url("../icons/circle-user.svg");
+            clicked => {
+                root.navigate("accounts");
+            }
+        }
+
+        SidebarItem {
+            label: "Shop";
+            active: root.current-page == "shop";
+            expanded: root.expanded;
+            icon: @image-url("../icons/store.svg");
+            clicked => {
+                root.navigate("shop");
+            }
+        }
+
+        SidebarItem {
+            label: "Cache Cleaner";
+            active: root.current-page == "cache";
+            expanded: root.expanded;
+            icon: @image-url("../icons/brush-cleaning.svg");
+            clicked => {
+                root.navigate("cache");
+            }
+        }
+
+        // Spacer
+        Rectangle {
+            vertical-stretch: 1;
+        }
+
+        // Separator
+        Rectangle {
+            height: 1px;
+            background: Colors.border;
+        }
+
+        SidebarItem {
+            label: "About";
+            active: root.current-page == "about";
+            expanded: root.expanded;
+            icon: @image-url("../icons/info.svg");
+            clicked => {
+                root.navigate("about");
+            }
+        }
+    }
+
+    // Right border
+    Rectangle {
+        x: parent.width - 1px;
+        width: 1px;
+        background: Colors.border;
+    }
+}

@@ -1,0 +1,74 @@
+import { Colors } from "../theme.slint";
+
+export component CacheCheckRow inherits Rectangle {
+    in property <string> name;
+    in property <string> size-display;
+    in-out property <bool> checked: true;
+    callback toggled(bool);
+
+    height: 36px;
+    border-radius: 4px;
+    background: touch.has-hover ? Colors.panel-hover : Colors.panel;
+    animate background { duration: 100ms; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 12px;
+        spacing: 8px;
+
+        Text {
+            text: root.name;
+            color: Colors.text-primary;
+            font-size: 12px;
+            font-weight: 500;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+
+        Text {
+            text: root.size-display;
+            color: Colors.text-secondary;
+            font-size: 11px;
+            font-weight: 600;
+            vertical-alignment: center;
+            horizontal-stretch: 0;
+            min-width: 60px;
+            horizontal-alignment: right;
+        }
+
+        // Toggle switch
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+
+            Rectangle {
+                width: 34px;
+                height: 18px;
+                border-radius: 9px;
+                background: root.checked ? Colors.accent : Colors.border;
+                animate background { duration: 150ms; }
+
+                Rectangle {
+                    x: root.checked ? parent.width - self.width - 2px : 2px;
+                    y: (parent.height - self.height) / 2;
+                    width: 14px;
+                    height: 14px;
+                    border-radius: 7px;
+                    background: #FFFFFF;
+                    animate x {
+                        duration: 150ms;
+                        easing: ease-in-out;
+                    }
+                }
+            }
+        }
+    }
+}

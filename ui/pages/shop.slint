@@ -1,0 +1,209 @@
+import { Colors } from "../theme.slint";
+import { VButton } from "../components/button.slint";
+import { VDropdown } from "../components/dropdown.slint";
+import { VSwitch } from "../components/switch.slint";
+import { StatusNotification } from "../components/status_notification.slint";
+import { SkinCard } from "../components/skin_card.slint";
+import { ShopResultData } from "../data.slint";
+
+export component ShopPage inherits VerticalLayout {
+    in property <[string]> shop-account-labels: [];
+    in-out property <int> shop-selected-index: 0;
+    in-out property <bool> shop-download-images: true;
+    in property <[ShopResultData]> shop-results: [];
+    in property <string> shop-status: "Ready";
+    in property <bool> shop-is-error: false;
+    in property <bool> shop-loading: false;
+    callback fetch-shop();
+
+    spacing: 8px;
+    padding: 16px;
+
+    Text {
+        text: "Fetch daily VALORANT shop for your saved accounts.";
+        wrap: word-wrap;
+        color: Colors.text-secondary;
+        font-size: 12px;
+    }
+
+    Rectangle {
+        height: 1px;
+        background: Colors.border;
+    }
+
+    // Account selection + toggle row
+    HorizontalLayout {
+        spacing: 8px;
+
+        Text {
+            text: "Account";
+            color: Colors.text-secondary;
+            font-size: 12px;
+            vertical-alignment: center;
+            horizontal-stretch: 0;
+        }
+
+        VDropdown {
+            options: root.shop-account-labels;
+            selected-index <=> root.shop-selected-index;
+            horizontal-stretch: 1;
+        }
+
+        VSwitch {
+            label: "Images";
+            checked <=> root.shop-download-images;
+            horizontal-stretch: 0;
+        }
+    }
+
+    // Results
+    VerticalLayout {
+        vertical-stretch: 1;
+        spacing: 10px;
+        alignment: start;
+
+        for result in root.shop-results: Rectangle {
+            border-radius: 8px;
+            background: Colors.panel;
+            border-width: 1px;
+            border-color: Colors.border;
+            vertical-stretch: 0;
+
+            VerticalLayout {
+                padding: 12px;
+                spacing: 8px;
+
+                if result.has-error: VerticalLayout {
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: start;
+
+                        VerticalLayout {
+                            alignment: center;
+                            horizontal-stretch: 0;
+
+                            Image {
+                                source: @image-url("../icons/triangle-alert.svg");
+                                width: 14px;
+                                height: 14px;
+                                colorize: Colors.accent;
+                            }
+                        }
+
+                        Text {
+                            text: result.label;
+                            color: Colors.accent;
+                            font-size: 13px;
+                            font-weight: 600;
+                        }
+                    }
+
+                    Text {
+                        text: result.error-msg;
+                        color: Colors.text-muted;
+                        font-size: 11px;
+                        wrap: word-wrap;
+                    }
+                }
+
+                if !result.has-error: VerticalLayout {
+                    spacing: 8px;
+
+                    // Header: game-id left, VP + reset right
+                HorizontalLayout {
+                        spacing: 8px;
+
+                        Text {
+                            text: result.game-id;
+                            color: Colors.text-primary;
+                            font-size: 14px;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                        }
+
+                        Text {
+                            text: result.vp + " VP";
+                            color: #E8D44D;
+                            font-size: 12px;
+                            font-weight: 600;
+                            vertical-alignment: center;
+                        }
+
+                        VerticalLayout {
+                            alignment: center;
+                            horizontal-stretch: 0;
+
+                            Image {
+                                source: @image-url("../icons/clock.svg");
+                                width: 12px;
+                                height: 12px;
+                                colorize: Colors.text-muted;
+                            }
+                        }
+
+                        Text {
+                            text: result.reset-time;
+                            color: Colors.text-muted;
+                            font-size: 12px;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    // Skins strict 2x2 grid
+                GridLayout {
+                        spacing: 6px;
+
+                        Row {
+                            SkinCard {
+                                col: 0;
+                                name: result.skin1-name;
+                                cost: result.skin1-cost;
+                                icon: result.skin1-icon;
+                            }
+
+                            SkinCard {
+                                col: 1;
+                                name: result.skin2-name;
+                                cost: result.skin2-cost;
+                                icon: result.skin2-icon;
+                            }
+                        }
+
+                        Row {
+                            SkinCard {
+                                col: 0;
+                                name: result.skin3-name;
+                                cost: result.skin3-cost;
+                                icon: result.skin3-icon;
+                            }
+
+                            SkinCard {
+                                col: 1;
+                                name: result.skin4-name;
+                                cost: result.skin4-cost;
+                                icon: result.skin4-icon;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    VButton {
+        label: root.shop-loading ? "Fetching Shop..." : "Fetch Shop";
+        accent: true;
+        enabled: !root.shop-loading;
+        has-icon: true;
+        icon: @image-url("../icons/store.svg");
+        clicked => {
+            root.fetch-shop();
+        }
+    }
+
+    StatusNotification {
+        message: root.shop-status;
+        is-error: root.shop-is-error;
+    }
+}

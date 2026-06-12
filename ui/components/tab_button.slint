@@ -1,0 +1,60 @@
+import { Colors } from "../theme.slint";
+
+export component TabButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    in property <image> icon;
+    in property <bool> has-icon: false;
+    callback clicked();
+
+    min-height: 36px;
+    border-radius: 0;
+    background: touch.has-hover && !root.active ? Colors.panel-hover : transparent;
+    horizontal-stretch: 0;
+
+    animate background { duration: 100ms; }
+
+    touch := TouchArea {
+        mouse-cursor: root.active ? default : pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        alignment: center;
+        spacing: 6px;
+
+        if root.has-icon: VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+
+            Image {
+                source: root.icon;
+                width: 14px;
+                height: 14px;
+                colorize: root.active ? Colors.accent : Colors.text-secondary;
+            }
+        }
+
+        Text {
+            text: root.label;
+            color: root.active ? Colors.accent : Colors.text-secondary;
+            font-size: 13px;
+            font-weight: 600;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+    // Active indicator bar
+    Rectangle {
+        y: parent.height - self.height;
+        height: 2px;
+        background: root.active ? Colors.accent : transparent;
+
+        animate background { duration: 150ms; }
+    }
+}

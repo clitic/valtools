@@ -1,0 +1,75 @@
+import { Colors } from "../theme.slint";
+
+export component VScrollView inherits Rectangle {
+    in property <bool> enabled: true;
+    out property <length> visible-height: flick.height;
+    out property <length> visible-width: flick.width;
+    in-out property <length> viewport-height: flick.viewport-height;
+    in-out property <length> viewport-width: flick.viewport-width;
+    in-out property <length> viewport-x: flick.viewport-x;
+    in-out property <length> viewport-y: flick.viewport-y;
+
+    min-height: 40px;
+    clip: true;
+
+    flick := Flickable {
+        x: 0;
+        y: 0;
+        width: parent.width - 6px;
+        height: parent.height;
+        viewport-y: 0;
+        interactive: root.enabled;
+
+        @children
+    }
+
+    property <bool> scrollbar-visible: flick.viewport-height > flick.height;
+    property <float> scroll-ratio: scrollbar-visible ? (flick.height / flick.viewport-height) : 1.0;
+    property <length> thumb-height: max(20px, flick.height * scroll-ratio);
+    property <length> scroll-range: flick.height - thumb-height;
+    property <length> thumb-y: scrollbar-visible ? (scroll-range * (-flick.viewport-y / (flick.viewport-height - flick.height))) : 0;
+
+    // Scrollbar track
+    Rectangle {
+        x: parent.width - 6px;
+        width: 6px;
+        height: parent.height;
+        background: transparent;
+
+        // Thumb
+        if root.scrollbar-visible: Rectangle {
+            x: 1px;
+            y: root.thumb-y;
+            width: 4px;
+            height: root.thumb-height;
+            border-radius: 2px;
+            background: sb-touch.pressed ? Colors.text-muted : sb-touch.has-hover ? Colors.border : Colors.panel-hover;
+
+            animate background { duration: 100ms; }
+        }
+
+        sb-touch := TouchArea {
+            property <length> start-y;
+            property <length> start-viewport-y;
+
+            mouse-cursor: root.scrollbar-visible ? pointer : default;
+
+            pointer-event(event) => {
+                if (event.kind == PointerEventKind.down) {
+                    self.start-y = self.mouse-y;
+                    self.start-viewport-y = flick.viewport-y;
+                }
+            }
+
+            moved => {
+                if (self.pressed && root.scrollbar-visible) {
+                    flick.viewport-y = clamp(
+                        self.start-viewport-y - (self.mouse-y - self.start-y) / root.scroll-ratio,
+                        -(flick.viewport-height - flick.height),
+                        0
+                    );
+                }
+            }
+        }
+    }
+}

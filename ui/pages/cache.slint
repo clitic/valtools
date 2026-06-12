@@ -1,0 +1,75 @@
+import { Colors } from "../theme.slint";
+import { VButton } from "../components/button.slint";
+import { StatusNotification } from "../components/status_notification.slint";
+import { CacheCheckRow } from "../components/cache_check_row.slint";
+import { VScrollView } from "../components/scroll_view.slint";
+import { CacheEntryData } from "../data.slint";
+
+export component CachePage inherits VerticalLayout {
+    in property <[CacheEntryData]> cache-entries: [];
+    in property <string> cache-size-display: "";
+    in property <string> cache-status: "Ready";
+    in property <bool> cache-is-error: false;
+    callback clean-cache();
+    callback toggle-cache-entry(int, bool);
+
+    spacing: 8px;
+    padding: 16px;
+
+    Text {
+        text: "Select items to clean from %LOCALAPPDATA%\\VALORANT.\nThis will NOT uninstall VALORANT. Your game installation is separate.";
+        wrap: word-wrap;
+        color: Colors.text-secondary;
+        font-size: 12px;
+    }
+
+    Rectangle {
+        height: 1px;
+        background: Colors.border;
+    }
+
+    VScrollView {
+        vertical-stretch: 1;
+
+        VerticalLayout {
+            spacing: 4px;
+            alignment: start;
+
+            for entry[idx] in root.cache-entries: CacheCheckRow {
+                name: entry.name;
+                size-display: entry.size-display;
+                checked: entry.checked;
+                toggled(val) => {
+                    root.toggle-cache-entry(idx, val);
+                }
+            }
+
+            if root.cache-entries.length == 0: Rectangle {
+                height: 40px;
+                Text {
+                    text: "No cache entries found.";
+                    color: Colors.text-muted;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+
+    VButton {
+        label: "Clean " + root.cache-size-display;
+        accent: true;
+        has-icon: true;
+        icon: @image-url("../icons/brush-cleaning.svg");
+        clicked => {
+            root.clean-cache();
+        }
+    }
+
+
+    StatusNotification {
+        message: root.cache-status;
+        is-error: root.cache-is-error;
+    }
+}

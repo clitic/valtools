@@ -1,0 +1,61 @@
+import { Colors } from "../theme.slint";
+
+export component VButton inherits Rectangle {
+    in property <string> label: "";
+    in property <bool> accent: false;
+    in property <bool> danger: false;
+    in property <bool> enabled: true;
+    in property <image> icon;
+    in property <bool> has-icon: false;
+    callback clicked();
+
+    min-height: 32px;
+    min-width: root.label == "" ? 32px : 80px;
+    border-radius: 4px;
+    clip: true;
+
+    background: !root.enabled ? Colors.panel : root.accent ? (touch.pressed ? Colors.accent-pressed : touch.has-hover ? Colors.accent-hover : Colors.accent) : root.danger ? (touch.pressed ? Colors.accent-pressed : touch.has-hover ? Colors.danger-hover : #3A1520) : touch.pressed ? Colors.panel : touch.has-hover ? Colors.panel-hover : Colors.card;
+
+    border-width: root.accent || root.danger ? 0px : 1px;
+    border-color: !root.enabled ? Colors.border : touch.has-hover ? Colors.accent : Colors.border;
+
+    animate background { duration: 120ms; }
+    animate border-color { duration: 120ms; }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? pointer : default;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        alignment: center;
+        padding-left: root.label == "" ? 0px : 16px;
+        padding-right: root.label == "" ? 0px : 16px;
+        spacing: 6px;
+
+        if root.has-icon: VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+
+            Image {
+                source: root.icon;
+                width: root.label == "" ? 18px : 14px;
+                height: root.label == "" ? 18px : 14px;
+                colorize: !root.enabled ? Colors.text-muted : root.accent ? #FFFFFF : root.danger ? Colors.danger : Colors.text-primary;
+            }
+        }
+
+        if root.label != "": Text {
+            text: root.label;
+            color: !root.enabled ? Colors.text-muted : root.accent ? #FFFFFF : root.danger ? Colors.danger : Colors.text-primary;
+            font-size: 13px;
+            font-weight: 600;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            letter-spacing: 0.5px;
+        }
+    }
+}

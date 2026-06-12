@@ -1,0 +1,97 @@
+import { Colors } from "../theme.slint";
+import { VButton } from "../components/button.slint";
+import { StatusNotification } from "../components/status_notification.slint";
+import { AccountRow } from "../components/account_row.slint";
+import { VScrollView } from "../components/scroll_view.slint";
+import { AccountData } from "../data.slint";
+
+export component AccountsPage inherits VerticalLayout {
+    in property <[AccountData]> accounts: [];
+    in property <string> status-message: "Ready";
+    in property <bool> status-is-error: false;
+    callback prepare-new-login();
+    callback save-session();
+    callback switch-account(string);
+    callback launch-valorant(string);
+    callback request-delete(string);
+
+    spacing: 10px;
+    padding: 16px;
+
+    Text {
+        text: "Switch between Riot accounts without logging out.\nAdd New Account → Log In → Save Session";
+        wrap: word-wrap;
+        color: Colors.text-secondary;
+        font-size: 12px;
+    }
+
+    HorizontalLayout {
+        spacing: 6px;
+
+        VButton {
+            label: "Add New Account";
+            accent: true;
+            has-icon: true;
+            icon: @image-url("../icons/plus.svg");
+            horizontal-stretch: 1;
+            clicked => {
+                root.prepare-new-login();
+            }
+        }
+
+        VButton {
+            label: "Save Session";
+            has-icon: true;
+            icon: @image-url("../icons/save.svg");
+            horizontal-stretch: 1;
+            clicked => {
+                root.save-session();
+            }
+        }
+    }
+
+    Rectangle {
+        height: 1px;
+        background: Colors.border;
+    }
+
+    VScrollView {
+        vertical-stretch: 1;
+
+        VerticalLayout {
+            spacing: 4px;
+            alignment: start;
+
+            for account[idx] in root.accounts: AccountRow {
+                label: account.label;
+                is-active: account.is-active;
+                launch => {
+                    root.switch-account(account.label);
+                }
+                launch-valorant => {
+                    root.launch-valorant(account.label);
+                }
+                delete => {
+                    root.request-delete(account.label);
+                }
+            }
+
+            if root.accounts.length == 0: Rectangle {
+                height: 60px;
+
+                Text {
+                    text: "Added accounts will be displayed here.";
+                    color: Colors.text-muted;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+
+    StatusNotification {
+        message: root.status-message;
+        is-error: root.status-is-error;
+    }
+}

@@ -1,0 +1,122 @@
+import { Colors } from "../theme.slint";
+
+export component TitleBar inherits Rectangle {
+    in property <string> title: "ValTools";
+    callback minimize();
+    callback close();
+    callback move-window(length, length);
+    callback toggle-sidebar();
+
+    height: 32px;
+    background: Colors.panel;
+
+    // Drag area covers the whole title bar
+    drag := TouchArea {
+        moved => {
+            if (self.pressed) {
+                root.move-window(self.mouse-x - self.pressed-x, self.mouse-y - self.pressed-y);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 0px;
+        spacing: 0px;
+
+        // Menu button
+        Rectangle {
+            width: 47px;
+            background: menu-touch.has-hover ? Colors.panel-hover : transparent;
+            animate background { duration: 80ms; }
+
+            menu-touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.toggle-sidebar();
+                }
+            }
+
+            Image {
+                source: @image-url("../icons/menu.svg");
+                width: 14px;
+                height: 14px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                colorize: menu-touch.has-hover ? Colors.text-primary : Colors.text-muted;
+            }
+        }
+
+        // Separator
+        Rectangle {
+            width: 1px;
+            background: Colors.border;
+        }
+
+        // Title
+        HorizontalLayout {
+            padding-left: 8px;
+            horizontal-stretch: 1;
+
+            Text {
+                text: root.title;
+                color: Colors.text-secondary;
+                font-size: 12px;
+                font-weight: 500;
+                vertical-alignment: center;
+            }
+        }
+
+        // Minimize button
+        Rectangle {
+            width: 46px;
+            background: min-touch.has-hover ? Colors.panel-hover : transparent;
+            animate background { duration: 80ms; }
+
+            min-touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.minimize();
+                }
+            }
+
+            Image {
+                source: @image-url("../icons/minus.svg");
+                width: 14px;
+                height: 14px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                colorize: Colors.text-secondary;
+            }
+        }
+
+        // Close button
+        Rectangle {
+            width: 46px;
+            background: close-touch.has-hover ? #C42B1C : transparent;
+            animate background { duration: 80ms; }
+
+            close-touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.close();
+                }
+            }
+
+            Image {
+                source: @image-url("../icons/x.svg");
+                width: 14px;
+                height: 14px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                colorize: close-touch.has-hover ? #FFFFFF : Colors.text-secondary;
+            }
+        }
+    }
+
+    // Bottom border
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Colors.border;
+    }
+}

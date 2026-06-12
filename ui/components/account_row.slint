@@ -1,0 +1,127 @@
+import { Colors } from "../theme.slint";
+import { VButton } from "button.slint";
+
+export component AccountRow inherits Rectangle {
+    in property <string> label;
+    in property <bool> is-active: false;
+    callback launch();
+    callback launch-valorant();
+    callback delete();
+
+    height: 40px;
+    border-radius: 4px;
+    background: touch.has-hover ? Colors.panel-hover : Colors.panel;
+    border-width: 0px;
+
+    animate background { duration: 100ms; }
+
+    touch := TouchArea {
+        mouse-cursor: default;
+    }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 8px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        spacing: 8px;
+
+        Text {
+            text: root.label;
+            color: root.is-active ? Colors.text-primary : Colors.text-secondary;
+            font-size: 13px;
+            font-weight: root.is-active ? 600 : 400;
+            vertical-alignment: center;
+        }
+
+        // Active chip
+        if root.is-active: VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+
+            Rectangle {
+                width: 50px;
+                height: 18px;
+                border-radius: 3px;
+                background: #1A3A2A;
+
+                Text {
+                    text: "active";
+                    color: Colors.active-dot;
+                    font-size: 10px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    letter-spacing: 0.5px;
+                }
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        // Trash button
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+
+            Rectangle {
+                width: 28px;
+                height: 28px;
+                border-radius: 4px;
+                background: del-touch.has-hover ? Colors.panel-hover : transparent;
+                animate background { duration: 100ms; }
+
+                del-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        root.delete();
+                    }
+                }
+
+                Image {
+                    source: @image-url("../icons/trash.svg");
+                    width: 16px;
+                    height: 16px;
+                    colorize: del-touch.has-hover ? Colors.text-secondary : Colors.text-muted;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    animate colorize { duration: 100ms; }
+                }
+            }
+        }
+
+        // Riot Client button (secondary)
+        VButton {
+            label: "";
+            accent: false;
+            horizontal-stretch: 0;
+            max-height: 28px;
+            min-height: 28px;
+            max-width: 36px;
+            min-width: 36px;
+            has-icon: true;
+            icon: @image-url("../icons/riot.svg");
+            clicked => {
+                root.launch();
+            }
+        }
+
+        // Valorant button (primary)
+        VButton {
+            label: "";
+            accent: true;
+            horizontal-stretch: 0;
+            max-height: 28px;
+            min-height: 28px;
+            max-width: 36px;
+            min-width: 36px;
+            has-icon: true;
+            icon: @image-url("../icons/valorant.svg");
+            clicked => {
+                root.launch-valorant();
+            }
+        }
+    }
+}
