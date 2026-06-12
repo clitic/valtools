@@ -8,7 +8,11 @@
 `ValTools` is a lightweight [Valorant](https://playvalorant.com) related toolkit for Windows. Switch between multiple Riot accounts without logging out, view your daily shop offers, and clean cache files - all from a single, clean desktop app built with Rust and Slint.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/showcase.png" width="700px">
+  <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/showcase.png" width="500px">
+  <br>
+  <a href="https://github.com/clitic/valtools/releases/download/0.1.0/valtools-0.1.0-x86_64-pc-windows-msvc.zip">
+    <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/download.svg" alt="Download" height="40px">
+  </a>
 </div>
 
 ## Features
@@ -16,14 +20,6 @@
 - **Account Switching**: Save and switch between multiple Riot accounts instantly. No need to re-enter credentials.
 - **Daily Shop Viewer**: Check your Valorant daily store offers across all saved accounts with skin images and VP prices.
 - **Cache Cleaner**: Browse and selectively clean Valorant cache directories to free up disk space.
-
-## Installation
-
-Visit the [releases page](https://github.com/clitic/valtools/releases) for pre-built binaries.
-
-<a href="https://github.com/clitic/valtools/releases/download/0.1.0/valtools-0.1.0-x86_64-pc-windows-msvc.zip">
-  <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/download.svg" alt="Download" height="40px">
-</a>
 
 ## License
 
