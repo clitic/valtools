@@ -10,4 +10,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-06-12
 
 [Unreleased]: https://github.com/clitic/valtools/compare/0.1.0...HEAD
-[0.1.0]: https://github.com/clitic/valtools/compare/0000000...0.1.0
+[0.1.0]: https://github.com/clitic/valtools/compare/c22322b...0.1.0
