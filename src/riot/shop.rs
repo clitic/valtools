@@ -113,10 +113,10 @@ pub fn fetch_account_store(
     }
 
     on_progress("Loading session...");
-    let ssid = api::extract_ssid(&yaml_path)?;
+    let tokens = api::extract_session_tokens(&yaml_path)?;
 
     on_progress("Authenticating with Riot...");
-    let access_token = api::get_access_token(&ssid)?;
+    let access_token = api::get_access_token(&tokens)?;
 
     on_progress("Fetching entitlements...");
     let entitlements = api::get_entitlements_token(&access_token)?;
@@ -193,8 +193,7 @@ pub fn fetch_game_id_from_session() -> AppResult<String> {
         return Err(AppError::App("No active Riot session found".into()));
     }
 
-    let ssid = api::extract_ssid(&yaml_path)?;
-    let access_token = api::get_access_token(&ssid)?;
-    let (game_id, _) = api::get_player_info(&access_token)?;
+    let tokens = api::extract_session_tokens(&yaml_path)?;
+    let (game_id, _) = api::get_player_info_from_id_token(&tokens.id_token)?;
     Ok(game_id)
 }

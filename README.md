@@ -10,7 +10,7 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/showcase.png" width="500px">
   <br>
-  <a href="https://github.com/clitic/valtools/releases/download/0.1.0/valtools-0.1.0-x86_64-pc-windows-msvc.zip">
+  <a href="https://github.com/clitic/valtools/releases/download/0.1.1/valtools-0.1.1-x86_64-pc-windows-msvc.zip">
     <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/download.svg" alt="Download" height="40px">
   </a>
 </div>

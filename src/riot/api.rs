@@ -46,27 +46,94 @@ pub(crate) fn download_bytes(url: &str) -> Option<Vec<u8>> {
     resp.body_mut().read_to_vec().ok()
 }
 
-pub(crate) fn extract_ssid(yaml_path: &Path) -> AppResult<String> {
+/// Tokens extracted from the new RiotGamesPrivateSettings.yaml structure.
+pub(crate) struct SessionTokens {
+    pub id_token: String,
+    pub refresh_token: String,
+    pub tdid: Option<String>,
+}
+
+pub(crate) fn extract_session_tokens(yaml_path: &Path) -> AppResult<SessionTokens> {
     let content = std::fs::read_to_string(yaml_path)?;
     let yaml: serde_yaml::Value = serde_yaml::from_str(&content)?;
 
-    let cookies = yaml["riot-login"]["persist"]["session"]["cookies"]
-        .as_sequence()
-        .ok_or(AppError::Api("No session cookies found in settings".into()))?;
+    let riot_client = &yaml["psl"]["authorization"]["riot-client"];
 
-    for cookie in cookies {
-        if cookie["name"].as_str() == Some("ssid") {
-            return cookie["value"]
-                .as_str()
-                .map(|s| s.to_string())
-                .ok_or_else(|| AppError::Api("ssid cookie has no value".into()));
+    let id_token = riot_client["id_token"]
+        .as_str()
+        .ok_or(AppError::Api("No id_token found in settings".into()))?
+        .to_string();
+
+    let refresh_token = riot_client["refresh_token"]
+        .as_str()
+        .ok_or(AppError::Api("No refresh_token found in settings".into()))?
+        .to_string();
+
+    let tdid = yaml["rso-authenticator"]["tdid"]["value"]
+        .as_str()
+        .map(|s| s.to_string());
+
+    Ok(SessionTokens { id_token, refresh_token, tdid })
+}
+
+/// Decode the id_token JWT to extract player info without an API call.
+pub(crate) fn get_player_info_from_id_token(id_token: &str) -> AppResult<(String, String)> {
+    let parts = id_token.split('.').collect::<Vec<&str>>();
+    if parts.len() < 2 {
+        return Err(AppError::Api("Invalid id_token format".into()));
+    }
+
+    // Decode the payload (second part) with padding tolerance
+    let payload_b64 = parts[1];
+    let payload_bytes = STANDARD
+        .decode(payload_b64)
+        .or_else(|_| {
+            // Try with padding added
+            let padded = match payload_b64.len() % 4 {
+                2 => format!("{}==", payload_b64),
+                3 => format!("{}=", payload_b64),
+                _ => payload_b64.to_string(),
+            };
+            STANDARD.decode(&padded)
+        })
+        .map_err(|e| AppError::Api(format!("Failed to decode id_token payload: {}", e)))?;
+
+    let payload: Value = serde_json::from_slice(&payload_bytes)?;
+
+    let game_name = payload["acct"]["game_name"]
+        .as_str()
+        .unwrap_or("Unknown");
+    let tag_line = payload["acct"]["tag_line"]
+        .as_str()
+        .unwrap_or("0000");
+    let puuid = payload["sub"]
+        .as_str()
+        .ok_or(AppError::Api("No sub (puuid) in id_token".into()))?;
+
+    Ok((format!("{}#{}", game_name, tag_line), puuid.to_string()))
+}
+
+pub(crate) fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
+    // Strategy 1: Use the refresh_token via the OAuth2 token endpoint
+    let form_body = format!(
+        "grant_type=refresh_token&client_id=riot-client&refresh_token={}",
+        tokens.refresh_token
+    );
+    if let Ok(mut resp) = AGENT
+        .post("https://auth.riotgames.com/token")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .send(form_body.as_bytes())
+    {
+        if let Ok(text) = resp.body_mut().read_to_string() {
+            if let Ok(json) = serde_json::from_str::<Value>(&text) {
+                if let Some(at) = json["access_token"].as_str() {
+                    return Ok(at.to_string());
+                }
+            }
         }
     }
 
-    Err(AppError::Api("ssid cookie not found in session".into()))
-}
-
-pub(crate) fn get_access_token(ssid: &str) -> AppResult<String> {
+    // Strategy 2: Cookie-based reauth using tdid
     let body = serde_json::json!({
         "client_id": "play-valorant-web-prod",
         "nonce": "1",
@@ -75,37 +142,56 @@ pub(crate) fn get_access_token(ssid: &str) -> AppResult<String> {
         "scope": "account openid"
     });
 
-    let cookie = format!("ssid={}", ssid);
+    let mut cookie_parts = Vec::new();
+    if let Some(tdid) = &tokens.tdid {
+        cookie_parts.push(format!("tdid={}", tdid));
+    }
+
+    // POST to init an auth session and capture the ssid cookie
+    if let Ok(mut resp) = AGENT
+        .post("https://auth.riotgames.com/api/v1/authorization")
+        .header("Content-Type", "application/json")
+        .header("Cookie", &cookie_parts.join("; "))
+        .send_json(&body)
+    {
+        let _ = resp.body_mut().read_to_string();
+        for cookie_header in resp.headers().get_all("set-cookie") {
+            if let Some(val) = cookie_header.to_str().ok() {
+                if val.starts_with("ssid=") {
+                    if let Some(ssid_val) = val.split(';').next() {
+                        cookie_parts.push(ssid_val.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Re-POST with cookies to get access_token via redirect
+    let cookie_str = cookie_parts.join("; ");
     let resp = post_json(
         "https://auth.riotgames.com/api/v1/authorization",
         &[
-            ("Cookie", cookie.as_str()),
+            ("Cookie", cookie_str.as_str()),
             ("Content-Type", "application/json"),
         ],
         body,
     )?;
 
-    if resp["type"].as_str() != Some("response") {
-        return Err(AppError::Api("Session expired. Re-login required.".into()));
+    if resp["type"].as_str() == Some("response") {
+        if let Some(uri) = resp["response"]["parameters"]["uri"].as_str() {
+            if let Some(fragment) = uri.split('#').nth(1) {
+                let params = fragment
+                    .split('&')
+                    .filter_map(|p| p.split_once('='))
+                    .collect::<HashMap<&str, &str>>();
+                if let Some(token) = params.get("access_token") {
+                    return Ok(token.to_string());
+                }
+            }
+        }
     }
 
-    let uri = resp["response"]["parameters"]["uri"]
-        .as_str()
-        .ok_or(AppError::Api("No redirect URI in auth response".into()))?;
-
-    let fragment = uri
-        .split('#')
-        .nth(1)
-        .ok_or(AppError::Api("No fragment in redirect URI".into()))?;
-    let params = fragment
-        .split('&')
-        .filter_map(|p| p.split_once('='))
-        .collect::<HashMap<&str, &str>>();
-
-    params
-        .get("access_token")
-        .map(|t| t.to_string())
-        .ok_or_else(|| AppError::Api("No access_token in redirect URI".into()))
+    Err(AppError::Api("Session expired. Re-login required.".into()))
 }
 
 pub(crate) fn get_entitlements_token(access_token: &str) -> AppResult<String> {
