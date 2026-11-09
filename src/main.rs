@@ -32,11 +32,7 @@ fn main() {
             gpui_kit::init(cx);
 
             // Set Dark mode with custom Valorant tactical theme
-            gpui_kit::component::Theme::change(
-                gpui_kit::component::ThemeMode::Dark,
-                None,
-                cx,
-            );
+            gpui_kit::component::Theme::change(gpui_kit::component::ThemeMode::Dark, None, cx);
 
             gpui_kit::component::Theme::update(cx, |theme| {
                 theme.colors.background = rgb(0x0f1923).into();

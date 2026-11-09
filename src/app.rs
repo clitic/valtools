@@ -3,7 +3,7 @@ use gpui_kit::component::{
     button::{Button, ButtonVariants},
     scroll::ScrollableElement as _,
     tag::Tag,
-    ActiveTheme as _, ColorName, Icon, IconName, Sizable as _, TitleBar,
+    ActiveTheme as _, Icon, IconName, Sizable as _, TitleBar,
 };
 use gpui_kit::{
     div, px, rgb, svg, App, Context, IntoElement, ParentElement as _, Render, Styled as _, Window,
@@ -362,7 +362,7 @@ impl Render for AppView {
                                 .child("ValTools"),
                         )
                         .child(
-                            Tag::color(ColorName::Neutral)
+                            Tag::new()
                                 .small()
                                 .rounded_full()
                                 .child(concat!("v", env!("CARGO_PKG_VERSION"))),
@@ -407,7 +407,6 @@ impl Render for AppView {
                             .child(
                                 Button::new("btn_save_session")
                                     .secondary()
-                                    .small()
                                     .icon(Icon::new(gpui_kit::assets::IconName::Save))
                                     .label("Save Session")
                                     .tooltip("Save the current logged-in Riot session")
@@ -419,7 +418,6 @@ impl Render for AppView {
                             .child(
                                 Button::new("btn_add_account")
                                     .primary()
-                                    .small()
                                     .icon(IconName::Plus)
                                     .label("Add Account")
                                     .tooltip("Log in with a new account via Riot Client")
@@ -448,7 +446,7 @@ impl Render for AppView {
                             .gap_2()
                             .child(
                                 Icon::new(IconName::CircleUser)
-                                    .text_color(theme.muted_foreground),
+                                    .text_color(theme.muted_foreground).large(),
                             )
                             .child(
                                 div()
@@ -540,15 +538,10 @@ impl Render for AppView {
                             // GitHub link
                             .child(
                                 Button::new("btn_github")
+                                    .icon(Icon::empty().path("icons/github.svg"))
                                     .ghost()
                                     .small()
                                     .tooltip("Open GitHub source repository")
-                                    .child(
-                                        svg()
-                                            .path("icons/github.svg")
-                                            .size(px(14.0))
-                                            .text_color(theme.foreground),
-                                    )
                                     .on_click(|_, _, _| {
                                         let _ = open::that("https://github.com/clitic/valtools");
                                     }),

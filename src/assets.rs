@@ -6,15 +6,11 @@ pub struct AppAssets;
 impl AssetSource for AppAssets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
         match path {
-            "icons/github.svg" => Ok(Some(Cow::Borrowed(include_bytes!(
-                "../ui/icons/github.svg"
-            )))),
-            "icons/riot.svg" => Ok(Some(Cow::Borrowed(include_bytes!(
-                "../ui/icons/riot.svg"
-            )))),
-            "icons/valorant.svg" => Ok(Some(Cow::Borrowed(include_bytes!(
-                "../ui/icons/valorant.svg"
-            )))),
+            "icons/github.svg" => Ok(Some(Cow::Borrowed(include_bytes!("../icons/github.svg")))),
+            "icons/riot.svg" => Ok(Some(Cow::Borrowed(include_bytes!("../icons/riot.svg")))),
+            "icons/valorant.svg" => {
+                Ok(Some(Cow::Borrowed(include_bytes!("../icons/valorant.svg"))))
+            }
             _ => gpui_kit::assets::AllAssets.load(path),
         }
     }
