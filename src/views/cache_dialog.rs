@@ -1,4 +1,4 @@
-use gpui_kit::component::{button::ButtonVariant, WindowExt as _};
+use gpui_kit::component::WindowExt as _;
 use gpui_kit::{App, Entity, Window};
 
 use crate::app::AppView;
@@ -14,11 +14,10 @@ pub fn open_cache_dialog(
         alert
             .title(format!("Clean {} of Cache?", size_str))
             .description(
-                "This will permanently delete temporary shader caches, crash logs, and web data from %LOCALAPPDATA%\\VALORANT.\n\nYour game installation, saved accounts, and game settings are NOT deleted.\n\nThis action is irreversible."
+                "This will safely delete temporary shader caches from %LOCALAPPDATA%\\VALORANT to free up disk space. Your saved accounts and control settings will be kept, but in-game video and graphics settings will reset."
             )
             .confirm()
             .ok_text("Clean Cache")
-            .ok_variant(ButtonVariant::Danger)
             .on_ok(move |_, _, cx| {
                 entity.update(cx, |app, cx| {
                     app.execute_clean_cache(cx);

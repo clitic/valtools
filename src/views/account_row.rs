@@ -103,7 +103,7 @@ pub fn render_account_row(
                         .small()
                         .w(px(76.0))
                         .icon(Icon::new(gpui_kit::assets::IconName::ShoppingCart))
-                        .label("Store")
+                        .label("Shop")
                         .tooltip("View Daily Shop")
                         .on_click(move |_, window, cx| {
                             AppView::open_shop_dialog(label_for_shop.clone(), window, cx);

@@ -403,18 +403,6 @@ impl Render for AppView {
                             .flex()
                             .items_center()
                             .gap_2()
-                            // Add New Account button
-                            .child(
-                                Button::new("btn_add_account")
-                                    .primary()
-                                    .small()
-                                    .icon(IconName::Plus)
-                                    .label("Add Account")
-                                    .tooltip("Log in with a new account via Riot Client")
-                                    .on_click(cx.listener(|this, _, window, cx| {
-                                        this.prepare_new_login(window, cx);
-                                    })),
-                            )
                             // Save Session button
                             .child(
                                 Button::new("btn_save_session")
@@ -427,21 +415,17 @@ impl Render for AppView {
                                         this.save_session(window, cx);
                                     })),
                             )
-                            // Clean Cache Button (showing size in MB)
+                            // Add New Account button
                             .child(
-                                Button::new("btn_clean_cache")
-                                    .outline()
+                                Button::new("btn_add_account")
+                                    .primary()
                                     .small()
-                                    .icon(Icon::new(gpui_kit::assets::IconName::BrushCleaning))
-                                    .label(format!("Clean Cache ({})", cache_size_str))
-                                    .tooltip("Clean Valorant temporary cache files")
-                                    .on_click({
-                                        let entity = entity.clone();
-                                        let size_str = cache_size_str.clone();
-                                        move |_, window, cx| {
-                                            open_cache_dialog(size_str.clone(), entity.clone(), window, cx);
-                                        }
-                                    }),
+                                    .icon(IconName::Plus)
+                                    .label("Add Account")
+                                    .tooltip("Log in with a new account via Riot Client")
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.prepare_new_login(window, cx);
+                                    })),
                             ),
                     ),
             )
@@ -532,21 +516,43 @@ impl Render for AppView {
                                     .child(self.status_message.clone()),
                             ),
                     )
-                    // External Links
+                    // Right actions: Clean Cache + GitHub
                     .child(
-                        Button::new("btn_github")
-                            .ghost()
-                            .small()
-                            .tooltip("Open GitHub source repository")
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1()
+                            // Clean Cache Icon Button (left side of GitHub)
                             .child(
-                                svg()
-                                    .path("icons/github.svg")
-                                    .size(px(14.0))
-                                    .text_color(theme.foreground),
+                                Button::new("btn_clean_cache")
+                                    .ghost()
+                                    .small()
+                                    .icon(Icon::new(gpui_kit::assets::IconName::BrushCleaning))
+                                    .tooltip(format!("Clean Cache ({})", cache_size_str))
+                                    .on_click({
+                                        let entity = entity.clone();
+                                        let size_str = cache_size_str.clone();
+                                        move |_, window, cx| {
+                                            open_cache_dialog(size_str.clone(), entity.clone(), window, cx);
+                                        }
+                                    }),
                             )
-                            .on_click(|_, _, _| {
-                                let _ = open::that("https://github.com/clitic/valtools");
-                            }),
+                            // GitHub link
+                            .child(
+                                Button::new("btn_github")
+                                    .ghost()
+                                    .small()
+                                    .tooltip("Open GitHub source repository")
+                                    .child(
+                                        svg()
+                                            .path("icons/github.svg")
+                                            .size(px(14.0))
+                                            .text_color(theme.foreground),
+                                    )
+                                    .on_click(|_, _, _| {
+                                        let _ = open::that("https://github.com/clitic/valtools");
+                                    }),
+                            ),
                     ),
             )
     }
