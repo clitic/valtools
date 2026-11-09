@@ -10,7 +10,7 @@ use gpui_kit::{
     div, px, rgb, svg, App, Context, IntoElement,
     ParentElement as _, Render, Styled as _, Window,
 };
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 use crate::{
     accounts::{self, Account},
@@ -565,11 +565,8 @@ impl Render for AppView {
                                             .size(px(14.0))
                                             .text_color(theme.foreground),
                                     )
-                                    .on_click(|_, _, cx| {
-                                        cx.open_url("https://github.com/clitic/valtools");
-                                        let _ = Command::new("cmd")
-                                            .args(["/C", "start", "", "https://github.com/clitic/valtools"])
-                                            .spawn();
+                                    .on_click(|_, _, _| {
+                                        let _ = open::that("https://github.com/clitic/valtools");
                                     }),
                             )
                             // Report Issues link
@@ -580,11 +577,8 @@ impl Render for AppView {
                                     .icon(IconName::TriangleAlert)
                                     .label("Report Issue")
                                     .tooltip("Report an issue on GitHub")
-                                    .on_click(|_, _, cx| {
-                                        cx.open_url("https://github.com/clitic/valtools/issues");
-                                        let _ = Command::new("cmd")
-                                            .args(["/C", "start", "", "https://github.com/clitic/valtools/issues"])
-                                            .spawn();
+                                    .on_click(|_, _, _| {
+                                        let _ = open::that("https://github.com/clitic/valtools/issues");
                                     }),
                             ),
                     ),

@@ -12,7 +12,6 @@ use gpui_kit::{
     InteractiveElement as _, IntoElement, ObjectFit, ParentElement as _, Render, Styled as _,
     StyledImage as _, WeakEntity, Window,
 };
-use std::process::Command;
 
 use crate::riot::{self, shop::AccountStore};
 
@@ -358,7 +357,6 @@ impl ShopDialogView {
             "https://www.youtube.com/results?search_query={}",
             youtube_query
         );
-        let youtube_url_clone = youtube_url.clone();
 
         div()
             .id(ElementId::NamedInteger("skin_card".into(), index as u64))
@@ -381,11 +379,8 @@ impl ShopDialogView {
                     .rounded_none()
                     .bg(rgb(0x141e2b))
                     .tooltip("Click to search skin on YouTube")
-                    .on_click(move |_, _, cx| {
-                        cx.open_url(&youtube_url);
-                        let _ = Command::new("cmd")
-                            .args(["/C", "start", "", &youtube_url_clone])
-                            .spawn();
+                    .on_click(move |_, _, _| {
+                        let _ = open::that(&youtube_url);
                     })
                     .child(if let Some(path) = &skin.icon_path {
                         img(path.clone())
