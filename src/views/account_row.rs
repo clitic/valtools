@@ -1,13 +1,13 @@
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::{
     badge::Badge,
-    button::{Button, ButtonVariant, ButtonVariants},
+    button::{Button, ButtonVariants},
     Icon, Sizable as _, Theme, WindowExt as _,
 };
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
-    div, px, rgb, svg, ElementId, Entity, InteractiveElement as _, IntoElement,
-    ParentElement as _, Styled as _,
+    div, px, ElementId, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
+    Styled as _,
 };
 
 use crate::{accounts::Account, app::AppView};
@@ -21,13 +21,11 @@ pub fn render_account_row(
     let label = account.label.clone();
     let is_active = account.is_active;
 
+    let label_for_del = label.clone();
     let label_for_shop = label.clone();
     let label_for_riot = label.clone();
-    let label_for_val = label.clone();
-    let label_for_del = label.clone();
-    let entity_for_riot = entity.clone();
-    let entity_for_val = entity.clone();
-    let entity_for_del = entity;
+    let entity_for_del = entity.clone();
+    let entity_for_riot = entity;
 
     div()
         .id(ElementId::NamedInteger("account_row".into(), index as u64))
@@ -78,61 +76,9 @@ pub fn render_account_row(
                 .flex()
                 .items_center()
                 .gap_1()
-                // Shop Button
-                .child(
-                    Button::new(ElementId::NamedInteger("btn_shop".into(), index as u64))
-                        .outline()
-                        .small()
-                        .icon(Icon::new(gpui_kit::assets::IconName::Store))
-                        .label("Shop")
-                        .tooltip("View Daily Shop")
-                        .on_click(move |_, window, cx| {
-                            AppView::open_shop_dialog(label_for_shop.clone(), window, cx);
-                        }),
-                )
-                // Riot Client Button
-                .child(
-                    Button::new(ElementId::NamedInteger("btn_riot".into(), index as u64))
-                        .outline()
-                        .small()
-                        .tooltip("Launch Riot Client")
-                        .child(
-                            svg()
-                                .path("icons/riot.svg")
-                                .size(px(14.0))
-                                .text_color(rgb(0xd13639)),
-                        )
-                        .on_click(move |_, _, cx| {
-                            let label = label_for_riot.clone();
-                            entity_for_riot.update(cx, |app, cx| {
-                                app.switch_account(label, cx);
-                            });
-                        }),
-                )
-                // Valorant Button (Primary)
-                .child(
-                    Button::new(ElementId::NamedInteger("btn_val".into(), index as u64))
-                        .primary()
-                        .small()
-                        .tooltip("Launch Valorant")
-                        .child(
-                            svg()
-                                .path("icons/valorant.svg")
-                                .size(px(14.0))
-                                .text_color(rgb(0xffffff)),
-                        )
-                        .on_click(move |_, _, cx| {
-                            let label = label_for_val.clone();
-                            entity_for_val.update(cx, |app, cx| {
-                                app.launch_valorant(label, cx);
-                            });
-                        }),
-                )
                 // Delete Button (Danger)
                 .child(
                     Button::new(ElementId::NamedInteger("btn_del".into(), index as u64))
-                        .ghost()
-                        .danger()
                         .small()
                         .icon(Icon::new(gpui_kit::assets::IconName::Trash))
                         .tooltip("Delete Saved Session")
@@ -149,13 +95,41 @@ pub fn render_account_row(
                                     )
                                     .confirm()
                                     .ok_text("Delete")
-                                    .ok_variant(ButtonVariant::Danger)
                                     .on_ok(move |_, _, cx| {
                                         entity.update(cx, |app, cx| {
                                             app.delete_account(&label_owned, cx);
                                         });
                                         true
                                     })
+                            });
+                        }),
+                )
+                // Store Button (ShoppingCart)
+                .child(
+                    Button::new(ElementId::NamedInteger("btn_shop".into(), index as u64))
+                        .outline()
+                        .small()
+                        .w(px(76.0))
+                        .icon(Icon::new(gpui_kit::assets::IconName::ShoppingCart))
+                        .label("Store")
+                        .tooltip("View Daily Shop")
+                        .on_click(move |_, window, cx| {
+                            AppView::open_shop_dialog(label_for_shop.clone(), window, cx);
+                        }),
+                )
+                // Riot Client Button (Primary)
+                .child(
+                    Button::new(ElementId::NamedInteger("btn_riot".into(), index as u64))
+                        .primary()
+                        .small()
+                        .w(px(76.0))
+                        .icon(Icon::default().path("icons/riot.svg"))
+                        .label("Riot")
+                        .tooltip("Launch Riot Client")
+                        .on_click(move |_, _, cx| {
+                            let label = label_for_riot.clone();
+                            entity_for_riot.update(cx, |app, cx| {
+                                app.switch_account(label, cx);
                             });
                         }),
                 ),

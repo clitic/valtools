@@ -5,7 +5,6 @@ use gpui_kit::component::{
     scroll::ScrollableElement as _,
     ActiveTheme as _, Icon, IconName, Sizable as _, TitleBar,
 };
-use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     div, px, rgb, svg, App, Context, IntoElement,
     ParentElement as _, Render, Styled as _, Window,
@@ -183,6 +182,7 @@ impl AppView {
         .detach();
     }
 
+    #[allow(dead_code)]
     pub fn launch_valorant(&mut self, label: String, cx: &mut Context<Self>) {
         self.status_message = format!("Switching to '{}'...", label);
         self.status_is_error = false;
@@ -423,24 +423,6 @@ impl Render for AppView {
                                         this.save_session(window, cx);
                                     })),
                             )
-                            // Daily Shop button (for active or first account)
-                            .when_some(
-                                self.accounts.iter().find(|a| a.is_active).or_else(|| self.accounts.first()),
-                                |this, active_acct| {
-                                    let active_label = active_acct.label.clone();
-                                    this.child(
-                                        Button::new("btn_toolbar_shop")
-                                            .outline()
-                                            .small()
-                                            .icon(Icon::new(gpui_kit::assets::IconName::Store))
-                                            .label("Daily Shop")
-                                            .tooltip(format!("View Daily Shop for '{}'", active_label))
-                                            .on_click(move |_, window, cx| {
-                                                AppView::open_shop_dialog(active_label.clone(), window, cx);
-                                            }),
-                                    )
-                                },
-                            )
                             // Clean Cache Button (showing size in MB)
                             .child(
                                 Button::new("btn_clean_cache")
@@ -548,39 +530,19 @@ impl Render for AppView {
                     )
                     // External Links
                     .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_1()
-                            // GitHub link
+                        Button::new("btn_github")
+                            .ghost()
+                            .xsmall()
+                            .tooltip("Open GitHub source repository")
                             .child(
-                                Button::new("btn_github")
-                                    .ghost()
-                                    .xsmall()
-                                    .label("GitHub")
-                                    .tooltip("Open GitHub source repository")
-                                    .child(
-                                        svg()
-                                            .path("icons/github.svg")
-                                            .size(px(14.0))
-                                            .text_color(theme.foreground),
-                                    )
-                                    .on_click(|_, _, _| {
-                                        let _ = open::that("https://github.com/clitic/valtools");
-                                    }),
+                                svg()
+                                    .path("icons/github.svg")
+                                    .size(px(14.0))
+                                    .text_color(theme.foreground),
                             )
-                            // Report Issues link
-                            .child(
-                                Button::new("btn_issues")
-                                    .ghost()
-                                    .xsmall()
-                                    .icon(IconName::TriangleAlert)
-                                    .label("Report Issue")
-                                    .tooltip("Report an issue on GitHub")
-                                    .on_click(|_, _, _| {
-                                        let _ = open::that("https://github.com/clitic/valtools/issues");
-                                    }),
-                            ),
+                            .on_click(|_, _, _| {
+                                let _ = open::that("https://github.com/clitic/valtools");
+                            }),
                     ),
             )
     }
