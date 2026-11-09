@@ -34,16 +34,16 @@ pub fn render_account_row(
         .rounded_lg()
         .border_1()
         .border_color(if is_active {
-            theme.primary.opacity(0.4)
+            theme.primary.opacity(0.6)
         } else {
             theme.border
         })
         .bg(if is_active {
-            theme.primary.opacity(0.05)
+            theme.primary.opacity(0.12)
         } else {
-            theme.secondary.opacity(0.25)
+            theme.secondary.opacity(0.4)
         })
-        .hover(|s| s.bg(theme.accent.opacity(0.2)))
+        .hover(|s| s.bg(theme.accent.opacity(0.4)))
         // Left section: Label
         .child(
             div()
@@ -71,6 +71,7 @@ pub fn render_account_row(
                 // Delete Button (Danger)
                 .child(
                     Button::new(ElementId::NamedInteger("btn_del".into(), index as u64))
+                        .ghost()
                         .small()
                         .icon(Icon::new(gpui_kit::assets::IconName::Trash))
                         .tooltip("Delete Saved Session")
@@ -99,12 +100,12 @@ pub fn render_account_row(
                 // Store Button (ShoppingCart)
                 .child(
                     Button::new(ElementId::NamedInteger("btn_shop".into(), index as u64))
-                        .outline()
+                        .secondary()
                         .small()
                         .w(px(76.0))
                         .icon(Icon::new(gpui_kit::assets::IconName::ShoppingCart))
-                        .label("Shop")
-                        .tooltip("View Daily Shop")
+                        .label("Store")
+                        .tooltip("View Daily Store")
                         .on_click(move |_, window, cx| {
                             AppView::open_shop_dialog(label_for_shop.clone(), window, cx);
                         }),

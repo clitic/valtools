@@ -352,7 +352,7 @@ impl Render for AppView {
                             svg()
                                 .path("icons/valorant.svg")
                                 .size(px(16.0))
-                                .text_color(rgb(0x000000)),
+                                .text_color(rgb(0xfa4454)),
                         )
                         .child(
                             div()
@@ -406,7 +406,7 @@ impl Render for AppView {
                             // Save Session button
                             .child(
                                 Button::new("btn_save_session")
-                                    .outline()
+                                    .secondary()
                                     .small()
                                     .icon(Icon::new(gpui_kit::assets::IconName::Save))
                                     .label("Save Session")

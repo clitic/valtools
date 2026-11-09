@@ -294,7 +294,7 @@ impl ShopDialogView {
             .rounded_md()
             .border_1()
             .border_color(theme.border)
-            .bg(theme.background)
+            .bg(theme.secondary)
             .overflow_hidden()
             .hover(|s| s.border_color(theme.primary))
             .child(
@@ -304,7 +304,7 @@ impl ShopDialogView {
                     .w_full()
                     .p_2()
                     .rounded_none()
-                    .bg(rgb(0x141e2b))
+                    .bg(rgb(0x121c27))
                     .tooltip("Click to search skin on YouTube")
                     .on_click(move |_, _, _| {
                         let _ = open::that(&youtube_url);
@@ -356,14 +356,23 @@ impl ShopDialogView {
             .rounded_md()
             .border_1()
             .border_color(theme.border)
-            .bg(theme.background)
+            .bg(theme.secondary)
             .overflow_hidden()
             .child(
-                Skeleton::new()
+                div()
                     .h(px(100.0))
                     .w_full()
-                    .rounded_none()
-                    .bg(theme.secondary.opacity(0.3)),
+                    .p_2()
+                    .bg(rgb(0x121c27))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        Skeleton::new()
+                            .h(px(54.0))
+                            .w_full()
+                            .rounded_md(),
+                    ),
             )
             .child(
                 div()
