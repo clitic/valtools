@@ -298,7 +298,7 @@ pub(crate) async fn get_wallet(
     puuid: &str,
     client_version: &str,
     region: &str,
-) -> AppResult<u32> {
+) -> AppResult<(u32, u32)> {
     let url = format!(
         "https://pd.{}.a.pvp.net/store/v1/wallet/{}",
         region, puuid
@@ -321,5 +321,9 @@ pub(crate) async fn get_wallet(
         .as_u64()
         .unwrap_or(0) as u32;
 
-    Ok(vp)
+    let rp = resp["Balances"]["e59aa87c-4cbf-517a-5983-6e81511be9b7"]
+        .as_u64()
+        .unwrap_or(0) as u32;
+
+    Ok((vp, rp))
 }

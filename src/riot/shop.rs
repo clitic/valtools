@@ -11,10 +11,12 @@ pub struct SkinOffer {
     pub icon_path: Option<PathBuf>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AccountStore {
     pub game_id: String,
     pub vp: u32,
+    pub rp: u32,
     pub skins: Vec<SkinOffer>,
     pub reset_secs: u64,
 }

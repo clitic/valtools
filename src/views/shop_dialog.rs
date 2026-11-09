@@ -2,9 +2,9 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::{
     alert::Alert,
     button::{Button, ButtonVariants},
-    dialog::{DialogClose, DialogFooter},
-    spinner::Spinner,
-    ActiveTheme as _, Icon, Sizable as _, WindowExt as _,
+    skeleton::Skeleton,
+    tag::Tag,
+    ActiveTheme as _, ColorName, Icon, Sizable as _, WindowExt as _,
 };
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
@@ -19,20 +19,12 @@ use crate::riot::{self, shop::AccountStore};
 pub struct ShopDialogView {
     label: String,
     loading: bool,
-    status_msg: String,
     store: Option<AccountStore>,
     error: Option<String>,
 }
 
 impl ShopDialogView {
     async fn fetch_flow(label: String, this: WeakEntity<Self>, cx: &mut AsyncApp) {
-        // Step 1: Loading session
-        this.update(cx, |this, cx| {
-            this.status_msg = "Loading session...".into();
-            cx.notify();
-        })
-        .ok();
-
         let yaml_path = crate::accounts::ACCOUNTS_DIR
             .join(&label)
             .join("RiotGamesPrivateSettings.yaml");
@@ -65,13 +57,6 @@ impl ShopDialogView {
             }
         };
 
-        // Step 2: Authenticating with Riot
-        this.update(cx, |this, cx| {
-            this.status_msg = "Authenticating with Riot...".into();
-            cx.notify();
-        })
-        .ok();
-
         let tokens_clone = tokens.clone();
         let access_token = match riot::spawn_tokio(async move {
             riot::api::get_access_token(&tokens_clone).await
@@ -89,13 +74,6 @@ impl ShopDialogView {
                 return;
             }
         };
-
-        // Step 3: Fetching entitlements
-        this.update(cx, |this, cx| {
-            this.status_msg = "Fetching entitlements...".into();
-            cx.notify();
-        })
-        .ok();
 
         let at_clone = access_token.clone();
         let entitlements = match riot::spawn_tokio(async move {
@@ -115,13 +93,6 @@ impl ShopDialogView {
             }
         };
 
-        // Step 4: Fetching player info
-        this.update(cx, |this, cx| {
-            this.status_msg = "Fetching player info...".into();
-            cx.notify();
-        })
-        .ok();
-
         let at_clone = access_token.clone();
         let (game_id, puuid) = match riot::spawn_tokio(async move {
             riot::api::get_player_info(&at_clone).await
@@ -140,13 +111,6 @@ impl ShopDialogView {
             }
         };
 
-        // Step 5: Checking client version
-        this.update(cx, |this, cx| {
-            this.status_msg = "Checking client version...".into();
-            cx.notify();
-        })
-        .ok();
-
         let client_version = match riot::spawn_tokio(async move {
             riot::api::cached_client_version().await
         })
@@ -163,13 +127,6 @@ impl ShopDialogView {
                 return;
             }
         };
-
-        // Step 6: Fetching storefront
-        this.update(cx, |this, cx| {
-            this.status_msg = "Fetching storefront...".into();
-            cx.notify();
-        })
-        .ok();
 
         let at_clone = access_token.clone();
         let ent_clone = entitlements.clone();
@@ -192,18 +149,11 @@ impl ShopDialogView {
             }
         };
 
-        // Step 7: Fetching VP balance
-        this.update(cx, |this, cx| {
-            this.status_msg = "Fetching VP balance...".into();
-            cx.notify();
-        })
-        .ok();
-
         let at_clone = access_token.clone();
         let ent_clone = entitlements.clone();
         let puuid_clone = puuid.clone();
         let cv_clone = client_version.clone();
-        let vp = match riot::spawn_tokio(async move {
+        let (vp, rp) = match riot::spawn_tokio(async move {
             riot::api::get_wallet(&at_clone, &ent_clone, &puuid_clone, &cv_clone, "ap").await
         })
         .await
@@ -229,13 +179,6 @@ impl ShopDialogView {
             ["SingleItemOffersRemainingDurationInSeconds"]
             .as_u64()
             .unwrap_or(0);
-
-        // Step 8: Resolving skin details & downloading images concurrently
-        this.update(cx, |this, cx| {
-            this.status_msg = "Resolving skins & downloading images...".into();
-            cx.notify();
-        })
-        .ok();
 
         let offers_clone = offers.clone();
         let skins = match riot::spawn_tokio(async move {
@@ -279,6 +222,7 @@ impl ShopDialogView {
             this.store = Some(AccountStore {
                 game_id,
                 vp,
+                rp,
                 skins,
                 reset_secs,
             });
@@ -297,7 +241,6 @@ impl ShopDialogView {
         Self {
             label,
             loading: true,
-            status_msg: "Initializing...".into(),
             store: None,
             error: None,
         }
@@ -308,7 +251,6 @@ impl ShopDialogView {
             return;
         }
         self.loading = true;
-        self.status_msg = "Initializing...".into();
         self.error = None;
         self.store = None;
         cx.notify();
@@ -321,36 +263,18 @@ impl ShopDialogView {
     }
 
     pub fn open(label: String, window: &mut Window, cx: &mut App) {
-        let label_title = label.clone();
+        let title = format!("{}'s Daily Shop", label);
         let shop_view: Entity<Self> = cx.new(|cx| Self::new(label, cx));
-        let shop_view_clone = shop_view.clone();
-        let shop_view_for_reload = shop_view.clone();
 
         window.open_dialog(cx, move |dialog, _, _| {
-            let shop_view_for_reload = shop_view_for_reload.clone();
             dialog
-                .title(format!("Daily Shop - {}", label_title))
-                .width(px(560.0))
-                .child(shop_view_clone.clone())
-                .footer(
-                    DialogFooter::new()
-                        .child(
-                            Button::new("reload_shop")
-                                .outline()
-                                .icon(Icon::new(gpui_kit::assets::IconName::RotateCw))
-                                .label("Reload Shop")
-                                .on_click(move |_, _, cx| {
-                                    shop_view_for_reload.update(cx, |this, cx| {
-                                        this.reload(cx);
-                                    });
-                                }),
-                        )
-                        .child(DialogClose::new().child(Button::new("close_shop").outline().label("Close"))),
-                )
+                .title(title.clone())
+                .width(px(540.0))
+                .child(shop_view.clone())
         });
     }
 
-    fn render_skin_card(&self, skin: &riot::shop::SkinOffer, index: usize, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_skin_card(&self, skin: &riot::shop::SkinOffer, index: usize, theme: &gpui_kit::component::Theme) -> impl IntoElement {
         let skin_name = skin.name.clone();
         let youtube_query = format!("Valorant {}", skin_name).replace(' ', "+");
         let youtube_url = format!(
@@ -363,13 +287,12 @@ impl ShopDialogView {
             .flex()
             .flex_col()
             .flex_1()
-            .min_w(px(220.0))
             .rounded_md()
             .border_1()
-            .border_color(cx.theme().border)
-            .bg(cx.theme().background)
+            .border_color(theme.border)
+            .bg(theme.background)
             .overflow_hidden()
-            .hover(|s| s.border_color(cx.theme().primary))
+            .hover(|s| s.border_color(theme.primary))
             .child(
                 Button::new(ElementId::NamedInteger("skin_img_btn".into(), index as u64))
                     .ghost()
@@ -390,7 +313,7 @@ impl ShopDialogView {
                             .into_any_element()
                     } else {
                         Icon::new(gpui_kit::assets::IconName::Image)
-                            .text_color(cx.theme().muted_foreground)
+                            .text_color(theme.muted_foreground)
                             .into_any_element()
                     }),
             )
@@ -406,7 +329,7 @@ impl ShopDialogView {
                             .flex_1()
                             .text_xs()
                             .font_semibold()
-                            .text_color(cx.theme().foreground)
+                            .text_color(theme.foreground)
                             .line_clamp(1)
                             .child(skin.name.clone()),
                     )
@@ -414,8 +337,48 @@ impl ShopDialogView {
                         div()
                             .text_xs()
                             .font_bold()
-                            .text_color(rgb(0xcca010))
+                            .text_color(theme.foreground)
                             .child(format!("{} VP", skin.cost)),
+                    ),
+            )
+    }
+
+    fn render_skeleton_card(&self, index: usize, theme: &gpui_kit::component::Theme) -> impl IntoElement {
+        div()
+            .id(ElementId::NamedInteger("skeleton_card".into(), index as u64))
+            .flex()
+            .flex_col()
+            .flex_1()
+            .rounded_md()
+            .border_1()
+            .border_color(theme.border)
+            .bg(theme.background)
+            .overflow_hidden()
+            .child(
+                Skeleton::new()
+                    .h(px(100.0))
+                    .w_full()
+                    .rounded_none()
+                    .bg(theme.secondary.opacity(0.3)),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .p_2()
+                    .gap_2()
+                    .child(
+                        Skeleton::new()
+                            .h(px(14.0))
+                            .w(px(110.0))
+                            .rounded_sm(),
+                    )
+                    .child(
+                        Skeleton::new()
+                            .h(px(14.0))
+                            .w(px(48.0))
+                            .rounded_sm(),
                     ),
             )
     }
@@ -428,23 +391,58 @@ impl Render for ShopDialogView {
         div()
             .flex()
             .flex_col()
-            .w(px(500.0))
-            .gap_4()
-            .p_2()
+            .w_full()
+            .gap_3()
             .child(if self.loading {
                 div()
                     .flex()
                     .flex_col()
-                    .items_center()
-                    .justify_center()
-                    .py_8()
                     .gap_3()
-                    .child(Spinner::new())
+                    // Skeletal Chips row just below title
                     .child(
                         div()
-                            .text_sm()
-                            .text_color(theme.muted_foreground)
-                            .child(self.status_msg.clone()),
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                Skeleton::new()
+                                    .h(px(24.0))
+                                    .w(px(72.0))
+                                    .rounded_full(),
+                            )
+                            .child(
+                                Skeleton::new()
+                                    .h(px(24.0))
+                                    .w(px(72.0))
+                                    .rounded_full(),
+                            )
+                            .child(
+                                Skeleton::new()
+                                    .h(px(24.0))
+                                    .w(px(108.0))
+                                    .rounded_full(),
+                            ),
+                    )
+                    // Skeletal 2x2 Grid
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .flex()
+                                    .gap_2()
+                                    .child(self.render_skeleton_card(0, theme))
+                                    .child(self.render_skeleton_card(1, theme)),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .gap_2()
+                                    .child(self.render_skeleton_card(2, theme))
+                                    .child(self.render_skeleton_card(3, theme)),
+                            ),
                     )
                     .into_any_element()
             } else if let Some(err) = &self.error {
@@ -492,69 +490,38 @@ impl Render for ShopDialogView {
                     .flex()
                     .flex_col()
                     .gap_3()
+                    // Chips row just below title (using official Tag component)
                     .child(
                         div()
                             .flex()
                             .items_center()
-                            .justify_between()
-                            .p_2()
-                            .rounded_md()
-                            .bg(theme.secondary.opacity(0.4))
+                            .gap_2()
+                            // VP Chip
                             .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .font_bold()
-                                            .text_sm()
-                                            .text_color(theme.foreground)
-                                            .child(store.game_id.clone()),
-                                    ),
+                                Tag::color(ColorName::Neutral)
+                                    .rounded_full()
+                                    .gap_1p5()
+                                    .child(Icon::new(gpui_kit::assets::IconName::Coins).xsmall())
+                                    .child(format!("{} VP", store.vp)),
                             )
+                            // RP Chip
                             .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_3()
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_1()
-                                            .child(
-                                                Icon::new(gpui_kit::assets::IconName::Sparkles)
-                                                    .xsmall()
-                                                    .text_color(rgb(0xcca010)),
-                                            )
-                                            .child(
-                                                div()
-                                                    .font_bold()
-                                                    .text_xs()
-                                                    .text_color(rgb(0xcca010))
-                                                    .child(format!("{} VP", store.vp)),
-                                            ),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_1()
-                                            .child(
-                                                Icon::new(gpui_kit::assets::IconName::Clock)
-                                                    .xsmall()
-                                                    .text_color(theme.muted_foreground),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(theme.muted_foreground)
-                                                    .child(riot::shop::format_reset_time(
-                                                        store.reset_secs,
-                                                    )),
-                                            ),
-                                    ),
+                                Tag::color(ColorName::Neutral)
+                                    .rounded_full()
+                                    .gap_1p5()
+                                    .child(Icon::new(gpui_kit::assets::IconName::Coins).xsmall())
+                                    .child(format!("{} RP", store.rp)),
+                            )
+                            // Resets in Chip
+                            .child(
+                                Tag::color(ColorName::Neutral)
+                                    .rounded_full()
+                                    .gap_1p5()
+                                    .child(Icon::new(gpui_kit::assets::IconName::Clock).xsmall())
+                                    .child(format!(
+                                        "Resets in {}",
+                                        riot::shop::format_reset_time(store.reset_secs)
+                                    )),
                             ),
                     )
                     // Grid 2x2
@@ -567,15 +534,15 @@ impl Render for ShopDialogView {
                                 div()
                                     .flex()
                                     .gap_2()
-                                    .when_some(s1, |this, s| this.child(self.render_skin_card(s, 0, cx)))
-                                    .when_some(s2, |this, s| this.child(self.render_skin_card(s, 1, cx))),
+                                    .when_some(s1, |this, s| this.child(self.render_skin_card(s, 0, theme)))
+                                    .when_some(s2, |this, s| this.child(self.render_skin_card(s, 1, theme))),
                             )
                             .child(
                                 div()
                                     .flex()
                                     .gap_2()
-                                    .when_some(s3, |this, s| this.child(self.render_skin_card(s, 2, cx)))
-                                    .when_some(s4, |this, s| this.child(self.render_skin_card(s, 3, cx))),
+                                    .when_some(s3, |this, s| this.child(self.render_skin_card(s, 2, theme)))
+                                    .when_some(s4, |this, s| this.child(self.render_skin_card(s, 3, theme))),
                             ),
                     )
                     .into_any_element()
