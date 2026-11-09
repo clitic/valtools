@@ -1,10 +1,8 @@
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::{
-    badge::Badge,
-    button::{Button, ButtonVariants},
+    button::{Button, ButtonVariant, ButtonVariants},
     Icon, Sizable as _, Theme, WindowExt as _,
 };
-use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     div, px, ElementId, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
     Styled as _,
@@ -46,7 +44,7 @@ pub fn render_account_row(
             theme.secondary.opacity(0.25)
         })
         .hover(|s| s.bg(theme.accent.opacity(0.2)))
-        // Left section: Label + Active Badge
+        // Left section: Label
         .child(
             div()
                 .flex()
@@ -62,13 +60,7 @@ pub fn render_account_row(
                             theme.foreground.opacity(0.85)
                         })
                         .child(label.clone()),
-                )
-                .when(is_active, |this| {
-                    this.child(
-                        Badge::new()
-                            .child("active"),
-                    )
-                }),
+                ),
         )
         // Right section: Action buttons
         .child(
@@ -126,10 +118,27 @@ pub fn render_account_row(
                         .icon(Icon::default().path("icons/riot.svg"))
                         .label("Riot")
                         .tooltip("Launch Riot Client")
-                        .on_click(move |_, _, cx| {
+                        .on_click(move |_, window, cx| {
+                            let entity = entity_for_riot.clone();
                             let label = label_for_riot.clone();
-                            entity_for_riot.update(cx, |app, cx| {
-                                app.switch_account(label, cx);
+                            window.open_alert_dialog(cx, move |alert, _, _| {
+                                let entity = entity.clone();
+                                let label_owned = label.clone();
+                                alert
+                                    .title(format!("Launch Riot Client for \"{}\"?", label))
+                                    .description(format!(
+                                        "Do you want to switch accounts and launch Riot Client as \"{}\"?",
+                                        label
+                                    ))
+                                    .confirm()
+                                    .ok_text("Launch")
+                                    .ok_variant(ButtonVariant::Primary)
+                                    .on_ok(move |_, _, cx| {
+                                        entity.update(cx, |app, cx| {
+                                            app.switch_account(label_owned.clone(), cx);
+                                        });
+                                        true
+                                    })
                             });
                         }),
                 ),

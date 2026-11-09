@@ -6,15 +6,17 @@ use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, TitleBar,
 };
 use gpui_kit::{
-    div, px, rgb, svg, App, Context, IntoElement,
-    ParentElement as _, Render, Styled as _, Window,
+    div, px, rgb, svg, App, Context, IntoElement, ParentElement as _, Render, Styled as _, Window,
 };
 use std::path::PathBuf;
 
 use crate::{
     accounts::{self, Account},
     cache, client, riot,
-    views::{account_row::render_account_row, cache_dialog::open_cache_dialog, shop_dialog::ShopDialogView},
+    views::{
+        account_row::render_account_row, cache_dialog::open_cache_dialog,
+        shop_dialog::ShopDialogView,
+    },
 };
 
 pub struct AppView {
@@ -428,7 +430,7 @@ impl Render for AppView {
                                 Button::new("btn_clean_cache")
                                     .outline()
                                     .small()
-                                    .icon(Icon::new(gpui_kit::assets::IconName::Trash))
+                                    .icon(Icon::new(gpui_kit::assets::IconName::BrushCleaning))
                                     .label(format!("Clean Cache ({})", cache_size_str))
                                     .tooltip("Clean Valorant temporary cache files")
                                     .on_click({
@@ -532,7 +534,7 @@ impl Render for AppView {
                     .child(
                         Button::new("btn_github")
                             .ghost()
-                            .xsmall()
+                            .small()
                             .tooltip("Open GitHub source repository")
                             .child(
                                 svg()
