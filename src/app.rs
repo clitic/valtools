@@ -384,6 +384,7 @@ impl Render for AppView {
                             .flex()
                             .flex_col()
                             .gap_0p5()
+                            .min_w_0()
                             .child(
                                 div()
                                     .font_bold()
@@ -403,6 +404,7 @@ impl Render for AppView {
                             .flex()
                             .items_center()
                             .gap_2()
+                            .flex_shrink_0()
                             // Save Session button
                             .child(
                                 Button::new("btn_save_session")
@@ -490,6 +492,7 @@ impl Render for AppView {
                             .flex()
                             .items_center()
                             .gap_2()
+                            .min_w_0()
                             .child(
                                 Icon::new(if self.status_is_error {
                                     IconName::TriangleAlert
@@ -506,6 +509,7 @@ impl Render for AppView {
                             .child(
                                 div()
                                     .text_xs()
+                                    .truncate()
                                     .text_color(if self.status_is_error {
                                         theme.danger
                                     } else {
@@ -520,6 +524,7 @@ impl Render for AppView {
                             .flex()
                             .items_center()
                             .gap_1()
+                            .flex_shrink_0()
                             // Clean Cache Icon Button (left side of GitHub)
                             .child(
                                 Button::new("btn_clean_cache")

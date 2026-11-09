@@ -50,10 +50,12 @@ pub fn render_account_row(
                 .flex()
                 .items_center()
                 .gap_2()
+                .min_w_0()
                 .child(
                     div()
                         .font_medium()
                         .text_sm()
+                        .truncate()
                         .text_color(if is_active {
                             theme.foreground
                         } else {
@@ -68,6 +70,7 @@ pub fn render_account_row(
                 .flex()
                 .items_center()
                 .gap_1()
+                .flex_shrink_0()
                 // Delete Button (Danger)
                 .child(
                     Button::new(ElementId::NamedInteger("btn_del".into(), index as u64))
@@ -126,7 +129,7 @@ pub fn render_account_row(
                                 let entity = entity.clone();
                                 let label_owned = label.clone();
                                 alert
-                                    .title(format!("Launch Riot Client for \"{}\"?", label))
+                                    .title(format!("Launch Riot Client as \"{}\"?", label))
                                     .description(format!(
                                         "Do you want to switch accounts and launch Riot Client as \"{}\"?",
                                         label

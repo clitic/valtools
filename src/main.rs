@@ -117,6 +117,7 @@ fn main() {
                     cx,
                 ))),
                 titlebar: Some(gpui_kit::component::TitleBar::title_bar_options()),
+                window_min_size: Some(size(px(600.0), px(460.0))),
                 ..Default::default()
             };
 
