@@ -1,9 +1,9 @@
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::{
-    badge::Badge,
     button::{Button, ButtonVariants},
     scroll::ScrollableElement as _,
-    ActiveTheme as _, Icon, IconName, Sizable as _, TitleBar,
+    tag::Tag,
+    ActiveTheme as _, ColorName, Icon, IconName, Sizable as _, TitleBar,
 };
 use gpui_kit::{
     div, px, rgb, svg, App, Context, IntoElement, ParentElement as _, Render, Styled as _, Window,
@@ -347,12 +347,12 @@ impl Render for AppView {
                         .flex()
                         .items_center()
                         .gap_2()
-                        .px_3()
+                        .pl(px(4.0))
                         .child(
                             svg()
                                 .path("icons/valorant.svg")
                                 .size(px(16.0))
-                                .text_color(rgb(0xfa4454)),
+                                .text_color(rgb(0x000000)),
                         )
                         .child(
                             div()
@@ -362,8 +362,10 @@ impl Render for AppView {
                                 .child("ValTools"),
                         )
                         .child(
-                            Badge::new()
-                                .child("v0.1.1"),
+                            Tag::color(ColorName::Neutral)
+                                .small()
+                                .rounded_full()
+                                .child(concat!("v", env!("CARGO_PKG_VERSION"))),
                         ),
                 ),
             )
