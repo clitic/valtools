@@ -1,66 +1,56 @@
 #![windows_subsystem = "windows"]
 
 mod accounts;
+mod app;
+mod assets;
 mod cache;
 mod client;
 mod error;
-mod handlers;
 mod riot;
+mod views;
 
-use slint::{ModelRc, SharedString, VecModel};
-use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::LazyLock};
+use gpui_kit::*;
+use std::{path::PathBuf, sync::LazyLock};
 
-slint::include_modules!();
-
-static LOCAL_APP_DATA: LazyLock<PathBuf> = LazyLock::new(|| {
+pub static LOCAL_APP_DATA: LazyLock<PathBuf> = LazyLock::new(|| {
     PathBuf::from(
         std::env::var("LOCALAPPDATA")
             .unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Local".into()),
     )
 });
 
-fn accounts_to_model(accts: &[accounts::Account]) -> ModelRc<AccountData> {
-    let items = accts
-        .iter()
-        .map(|a| AccountData {
-            label: SharedString::from(&a.label),
-            is_active: a.is_active,
-        })
-        .collect::<Vec<AccountData>>();
-    ModelRc::new(Rc::new(VecModel::from(items)))
-}
+fn main() {
+    std::panic::set_hook(Box::new(|info| {
+        let msg = format!("PANIC: {}\n", info);
+        let _ = std::fs::write("valtools_panic.log", &msg);
+        eprintln!("{}", msg);
+    }));
 
-fn cache_entries_to_model(entries: &[cache::CacheEntry]) -> ModelRc<CacheEntryData> {
-    let items = entries
-        .iter()
-        .map(|e| CacheEntryData {
-            name: SharedString::from(&e.name),
-            size_display: SharedString::from(cache::format_size(e.size)),
-            size: e.size as i32,
-            checked: true,
-        })
-        .collect::<Vec<CacheEntryData>>();
-    ModelRc::new(Rc::new(VecModel::from(items)))
-}
+    gpui_kit::application()
+        .with_assets(assets::AppAssets)
+        .run(|cx| {
+            gpui_kit::init(cx);
 
-fn main() -> Result<(), slint::PlatformError> {
-    let ui = AppWindow::new()?;
+            // Set Light theme
+            gpui_kit::component::Theme::change(
+                gpui_kit::component::ThemeMode::Light,
+                None,
+                cx,
+            );
 
-    // Initial data load
-    let accts = accounts::list_accounts();
-    ui.set_accounts(accounts_to_model(&accts));
+            let options = gpui_kit::WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
+                    None,
+                    size(px(760.0), px(580.0)),
+                    cx,
+                ))),
+                titlebar: Some(gpui_kit::component::TitleBar::title_bar_options()),
+                ..Default::default()
+            };
 
-    let entries = cache::list_cache_entries();
-    ui.set_cache_entries(cache_entries_to_model(&entries));
-    handlers::cache::update_cache_button(&ui);
-
-    // Store entry paths for cleaning
-    let cache_paths: Rc<RefCell<Vec<PathBuf>>> = Rc::new(RefCell::new(
-        entries.iter().map(|e| e.path.clone()).collect::<Vec<PathBuf>>(),
-    ));
-
-    // Register all UI callbacks
-    handlers::setup_all(&ui, cache_paths);
-
-    ui.run()
+            gpui_kit::open_window(options, cx, |window, cx| {
+                cx.new(|cx| app::AppView::new(window, cx))
+            })
+            .expect("Failed to open ValTools window");
+        });
 }

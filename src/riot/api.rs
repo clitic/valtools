@@ -1,52 +1,51 @@
 use crate::error::{AppError, AppResult};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
-use std::{collections::HashMap, path::Path, sync::{LazyLock, OnceLock}};
-use ureq::{Agent, tls::{TlsConfig, TlsProvider, RootCerts}};
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::{LazyLock, OnceLock},
+};
 
-static AGENT: LazyLock<Agent> = LazyLock::new(|| {
-    Agent::config_builder()
-        .tls_config(
-            TlsConfig::builder()
-                .provider(TlsProvider::NativeTls)
-                .root_certs(RootCerts::PlatformVerifier)
-                .build(),
-        )
+static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .user_agent("RiotClient/99.0.0.0000000.0000000 rso-auth (Windows;10;;Professional, x64)")
         .build()
-        .new_agent()
+        .expect("Failed to build reqwest client")
 });
 
-pub(crate) fn post_json(
+pub(crate) async fn post_json(
     url: &str,
     headers: &[(&str, &str)],
     body: Value,
 ) -> AppResult<Value> {
-    let mut req = AGENT.post(url);
+    let mut req = CLIENT.post(url);
     for &(k, v) in headers {
         req = req.header(k, v);
     }
-    let mut resp = req.send_json(&body)?;
-    let text = resp.body_mut().read_to_string()?;
-    Ok(serde_json::from_str(&text)?)
+    let resp = req.json(&body).send().await?;
+    let json = resp.json::<Value>().await?;
+    Ok(json)
 }
 
-pub(crate) fn get_json(url: &str, headers: &[(&str, &str)]) -> AppResult<Value> {
-    let mut req = AGENT.get(url);
+pub(crate) async fn get_json(url: &str, headers: &[(&str, &str)]) -> AppResult<Value> {
+    let mut req = CLIENT.get(url);
     for &(k, v) in headers {
         req = req.header(k, v);
     }
-    let mut resp = req.call()?;
-    let text = resp.body_mut().read_to_string()?;
-    Ok(serde_json::from_str(&text)?)
+    let resp = req.send().await?;
+    let json = resp.json::<Value>().await?;
+    Ok(json)
 }
 
-/// Download raw bytes from a URL using the shared Agent.
-pub(crate) fn download_bytes(url: &str) -> Option<Vec<u8>> {
-    let mut resp = AGENT.get(url).call().ok()?;
-    resp.body_mut().read_to_vec().ok()
+/// Download raw bytes from a URL using the shared reqwest Client.
+pub(crate) async fn download_bytes(url: &str) -> Option<Vec<u8>> {
+    let resp = CLIENT.get(url).send().await.ok()?;
+    resp.bytes().await.ok().map(|b| b.to_vec())
 }
 
 /// Tokens extracted from the new RiotGamesPrivateSettings.yaml structure.
+#[derive(Clone, Debug)]
 pub(crate) struct SessionTokens {
     pub id_token: String,
     pub refresh_token: String,
@@ -73,7 +72,11 @@ pub(crate) fn extract_session_tokens(yaml_path: &Path) -> AppResult<SessionToken
         .as_str()
         .map(|s| s.to_string());
 
-    Ok(SessionTokens { id_token, refresh_token, tdid })
+    Ok(SessionTokens {
+        id_token,
+        refresh_token,
+        tdid,
+    })
 }
 
 /// Decode the id_token JWT to extract player info without an API call.
@@ -88,7 +91,6 @@ pub(crate) fn get_player_info_from_id_token(id_token: &str) -> AppResult<(String
     let payload_bytes = STANDARD
         .decode(payload_b64)
         .or_else(|_| {
-            // Try with padding added
             let padded = match payload_b64.len() % 4 {
                 2 => format!("{}==", payload_b64),
                 3 => format!("{}=", payload_b64),
@@ -113,22 +115,22 @@ pub(crate) fn get_player_info_from_id_token(id_token: &str) -> AppResult<(String
     Ok((format!("{}#{}", game_name, tag_line), puuid.to_string()))
 }
 
-pub(crate) fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
+pub(crate) async fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
     // Strategy 1: Use the refresh_token via the OAuth2 token endpoint
     let form_body = format!(
         "grant_type=refresh_token&client_id=riot-client&refresh_token={}",
         tokens.refresh_token
     );
-    if let Ok(mut resp) = AGENT
+    if let Ok(resp) = CLIENT
         .post("https://auth.riotgames.com/token")
         .header("Content-Type", "application/x-www-form-urlencoded")
-        .send(form_body.as_bytes())
+        .body(form_body)
+        .send()
+        .await
     {
-        if let Ok(text) = resp.body_mut().read_to_string() {
-            if let Ok(json) = serde_json::from_str::<Value>(&text) {
-                if let Some(at) = json["access_token"].as_str() {
-                    return Ok(at.to_string());
-                }
+        if let Ok(json) = resp.json::<Value>().await {
+            if let Some(at) = json["access_token"].as_str() {
+                return Ok(at.to_string());
             }
         }
     }
@@ -148,17 +150,18 @@ pub(crate) fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
     }
 
     // POST to init an auth session and capture the ssid cookie
-    if let Ok(mut resp) = AGENT
+    if let Ok(resp) = CLIENT
         .post("https://auth.riotgames.com/api/v1/authorization")
         .header("Content-Type", "application/json")
-        .header("Cookie", &cookie_parts.join("; "))
-        .send_json(&body)
+        .header("Cookie", cookie_parts.join("; "))
+        .json(&body)
+        .send()
+        .await
     {
-        let _ = resp.body_mut().read_to_string();
-        for cookie_header in resp.headers().get_all("set-cookie") {
-            if let Some(val) = cookie_header.to_str().ok() {
-                if val.starts_with("ssid=") {
-                    if let Some(ssid_val) = val.split(';').next() {
+        for val in resp.headers().get_all(reqwest::header::SET_COOKIE) {
+            if let Ok(val_str) = val.to_str() {
+                if val_str.starts_with("ssid=") {
+                    if let Some(ssid_val) = val_str.split(';').next() {
                         cookie_parts.push(ssid_val.to_string());
                     }
                 }
@@ -175,7 +178,8 @@ pub(crate) fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
             ("Content-Type", "application/json"),
         ],
         body,
-    )?;
+    )
+    .await?;
 
     if resp["type"].as_str() == Some("response") {
         if let Some(uri) = resp["response"]["parameters"]["uri"].as_str() {
@@ -194,7 +198,7 @@ pub(crate) fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
     Err(AppError::Api("Session expired. Re-login required.".into()))
 }
 
-pub(crate) fn get_entitlements_token(access_token: &str) -> AppResult<String> {
+pub(crate) async fn get_entitlements_token(access_token: &str) -> AppResult<String> {
     let auth = format!("Bearer {}", access_token);
     let resp = post_json(
         "https://entitlements.auth.riotgames.com/api/token/v1",
@@ -203,7 +207,8 @@ pub(crate) fn get_entitlements_token(access_token: &str) -> AppResult<String> {
             ("Content-Type", "application/json"),
         ],
         serde_json::json!({}),
-    )?;
+    )
+    .await?;
 
     resp["entitlements_token"]
         .as_str()
@@ -211,13 +216,14 @@ pub(crate) fn get_entitlements_token(access_token: &str) -> AppResult<String> {
         .ok_or_else(|| AppError::Api("No entitlements_token in response".into()))
 }
 
-pub(crate) fn get_player_info(access_token: &str) -> AppResult<(String, String)> {
+pub(crate) async fn get_player_info(access_token: &str) -> AppResult<(String, String)> {
     let auth = format!("Bearer {}", access_token);
     let resp = post_json(
         "https://auth.riotgames.com/userinfo",
         &[("Authorization", auth.as_str())],
         serde_json::json!({}),
-    )?;
+    )
+    .await?;
 
     let game_name = resp["acct"]["game_name"]
         .as_str()
@@ -230,8 +236,8 @@ pub(crate) fn get_player_info(access_token: &str) -> AppResult<(String, String)>
     Ok((format!("{}#{}", game_name, tag_line), puuid.to_string()))
 }
 
-fn get_client_version() -> AppResult<String> {
-    let resp = get_json("https://valorant-api.com/v1/version", &[])?;
+async fn get_client_version() -> AppResult<String> {
+    let resp = get_json("https://valorant-api.com/v1/version", &[]).await?;
     resp["data"]["riotClientVersion"]
         .as_str()
         .map(|s| s.to_string())
@@ -240,11 +246,11 @@ fn get_client_version() -> AppResult<String> {
 
 static CLIENT_VERSION: OnceLock<String> = OnceLock::new();
 
-pub(crate) fn cached_client_version() -> AppResult<String> {
+pub(crate) async fn cached_client_version() -> AppResult<String> {
     if let Some(v) = CLIENT_VERSION.get() {
         return Ok(v.clone());
     }
-    let v = get_client_version()?;
+    let v = get_client_version().await?;
     Ok(CLIENT_VERSION.get_or_init(|| v).clone())
 }
 
@@ -258,7 +264,7 @@ fn platform_encoded() -> String {
     STANDARD.encode(platform.to_string())
 }
 
-pub(crate) fn get_storefront(
+pub(crate) async fn get_storefront(
     access_token: &str,
     entitlements: &str,
     puuid: &str,
@@ -283,9 +289,10 @@ pub(crate) fn get_storefront(
         ],
         serde_json::json!({}),
     )
+    .await
 }
 
-pub(crate) fn get_wallet(
+pub(crate) async fn get_wallet(
     access_token: &str,
     entitlements: &str,
     puuid: &str,
@@ -307,7 +314,8 @@ pub(crate) fn get_wallet(
             ("X-Riot-ClientVersion", client_version),
             ("X-Riot-ClientPlatform", plat.as_str()),
         ],
-    )?;
+    )
+    .await?;
 
     let vp = resp["Balances"]["85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741"]
         .as_u64()

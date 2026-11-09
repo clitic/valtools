@@ -1,6 +1,4 @@
 fn main() {
-    slint_build::compile("ui/app.slint").expect("Slint build failed");
-
     if cfg!(target_os = "windows") {
         println!("cargo:rerun-if-changed=ui/icons/logo.ico");
         let mut res = winresource::WindowsResource::new();

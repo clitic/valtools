@@ -3,6 +3,7 @@ use std::{fs, path::PathBuf, sync::LazyLock};
 pub static VALORANT_LOCAL_DIR: LazyLock<PathBuf> =
     LazyLock::new(|| crate::LOCAL_APP_DATA.join("VALORANT"));
 
+#[allow(dead_code)]
 pub struct CacheEntry {
     pub name: String,
     pub path: PathBuf,
