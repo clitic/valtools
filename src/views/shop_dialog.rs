@@ -32,7 +32,10 @@ impl ShopDialogView {
         if !yaml_path.exists() {
             this.update(cx, |this, cx| {
                 this.loading = false;
-                this.error = Some(format!("No saved session found for '{}'", label));
+                this.error = Some(format!(
+                    "No saved session found for '{}'. Please log in via Riot Client and click 'Save Session' in ValTools.",
+                    label
+                ));
                 cx.notify();
             })
             .ok();
@@ -246,6 +249,7 @@ impl ShopDialogView {
         }
     }
 
+    #[allow(dead_code)]
     pub fn reload(&mut self, cx: &mut Context<Self>) {
         if self.loading {
             return;
@@ -446,7 +450,6 @@ impl Render for ShopDialogView {
                     )
                     .into_any_element()
             } else if let Some(err) = &self.error {
-                let this_entity = cx.entity().clone();
                 div()
                     .flex()
                     .flex_col()
@@ -454,30 +457,6 @@ impl Render for ShopDialogView {
                     .child(
                         Alert::error("shop_error", err.clone())
                             .title("Failed to load shop"),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(theme.muted_foreground)
-                                    .child("Please ensure the Riot session is still active and valid."),
-                            )
-                            .child(
-                                Button::new("btn_retry_shop")
-                                    .primary()
-                                    .small()
-                                    .icon(Icon::new(gpui_kit::assets::IconName::RotateCw))
-                                    .label("Retry")
-                                    .on_click(move |_, _, cx| {
-                                        this_entity.update(cx, |this, cx| {
-                                            this.reload(cx);
-                                        });
-                                    }),
-                            ),
                     )
                     .into_any_element()
             } else if let Some(store) = &self.store {

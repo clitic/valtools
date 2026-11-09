@@ -195,7 +195,7 @@ pub(crate) async fn get_access_token(tokens: &SessionTokens) -> AppResult<String
         }
     }
 
-    Err(AppError::Api("Session expired. Re-login required.".into()))
+    Err(AppError::Api("Your Riot session has expired. Please launch Riot Client, log into this account, and click 'Save Session' in ValTools to renew it.".into()))
 }
 
 pub(crate) async fn get_entitlements_token(access_token: &str) -> AppResult<String> {
