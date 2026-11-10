@@ -9,8 +9,8 @@ use gpui_kit::component::{
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     div, img, px, rgb, App, AppContext as _, AsyncApp, Context, ElementId, Entity,
-    InteractiveElement as _, IntoElement, ObjectFit, ParentElement as _, Render, Styled as _,
-    StyledImage as _, WeakEntity, Window,
+    InteractiveElement as _, IntoElement, ObjectFit, ParentElement as _, Render,
+    StatefulInteractiveElement as _, Styled as _, StyledImage as _, WeakEntity, Window,
 };
 
 use crate::riot::{self, shop::AccountStore};
@@ -195,11 +195,13 @@ impl ShopDialogView {
                 tasks.push(async move {
                     let (name, icon_url) = riot::shop::get_skin_info(&uuid).await;
                     let icon_path = riot::shop::download_single_image(&icon_url).await;
+                    let tier = riot::shop::get_tier_for_skin(&uuid, cost);
                     riot::shop::SkinOffer {
                         name,
                         cost,
                         icon_url,
                         icon_path,
+                        tier,
                     }
                 });
             }
@@ -290,6 +292,8 @@ impl ShopDialogView {
             "https://www.youtube.com/results?search_query={}",
             youtube_query
         );
+        let tier = skin.tier;
+        let tier_color = rgb(tier.color_hex());
 
         div()
             .id(ElementId::NamedInteger("skin_card".into(), index as u64))
@@ -301,7 +305,7 @@ impl ShopDialogView {
             .border_color(theme.border)
             .bg(theme.secondary)
             .overflow_hidden()
-            .hover(|s| s.border_color(theme.primary))
+            .hover(move |s| s.border_color(tier_color.opacity(0.8)))
             .child(
                 Button::new(ElementId::NamedInteger("skin_img_btn".into(), index as u64))
                     .ghost()
@@ -336,18 +340,36 @@ impl ShopDialogView {
                     .child(
                         div()
                             .flex_1()
+                            .min_w_0()
                             .text_xs()
                             .font_semibold()
                             .text_color(theme.foreground)
-                            .line_clamp(1)
+                            .truncate()
                             .child(skin.name.clone()),
                     )
                     .child(
                         div()
-                            .text_xs()
-                            .font_bold()
-                            .text_color(theme.foreground)
-                            .child(format!("{} VP", skin.cost)),
+                            .id(ElementId::NamedInteger("skin_cost_chip".into(), index as u64))
+                            .tooltip(move |window, cx| {
+                                gpui_kit::component::tooltip::Tooltip::new(tier.display_name())
+                                    .build(window, cx)
+                            })
+                            .child(
+                                Tag::custom(
+                                    tier_color.opacity(0.18).into(),
+                                    tier_color.into(),
+                                    tier_color.opacity(0.45).into(),
+                                )
+                                .small()
+                                .rounded_full()
+                                .gap_1()
+                                .child(
+                                    img(tier.icon_asset())
+                                        .size(px(14.0))
+                                        .object_fit(ObjectFit::Contain),
+                                )
+                                .child(format!("{} VP", skin.cost)),
+                            ),
                     ),
             )
     }
@@ -389,7 +411,7 @@ impl ShopDialogView {
                     .p_2()
                     .gap_2()
                     .child(Skeleton::new().h(px(14.0)).w(px(110.0)).rounded_sm())
-                    .child(Skeleton::new().h(px(14.0)).w(px(48.0)).rounded_sm()),
+                    .child(Skeleton::new().h(px(20.0)).w(px(64.0)).rounded_full()),
             )
     }
 }
