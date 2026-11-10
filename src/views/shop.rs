@@ -13,7 +13,6 @@ use crate::riot::{
     store::{self, AccountStore},
     tiers,
 };
-use crate::runtime::spawn_tokio;
 
 pub struct ShopDialogView {
     loading: bool,
@@ -40,161 +39,70 @@ impl ShopDialogView {
             return;
         }
 
-        let yaml_path_clone = yaml_path.clone();
-        let tokens = match cx
+        let store_res = cx
             .background_executor()
-            .spawn(async move { auth::extract_session_tokens(&yaml_path_clone) })
-            .await
-        {
-            Ok(t) => t,
-            Err(e) => {
-                this.update(cx, |this, cx| {
-                    this.loading = false;
-                    this.error = Some(e.to_string());
-                    cx.notify();
-                })
-                .ok();
-                return;
-            }
-        };
+            .spawn(async move {
+                let tokens = auth::extract_session_tokens(&yaml_path)?;
+                let access_token = auth::get_access_token(&tokens)?;
+                let entitlements = auth::get_entitlements_token(&access_token)?;
+                let (_game_id, puuid) = auth::get_player_info(&access_token)?;
+                let client_version = api::cached_client_version()?;
+                let store_data = api::get_storefront(
+                    &access_token,
+                    &entitlements,
+                    &puuid,
+                    &client_version,
+                    "ap",
+                )?;
+                let (vp, rp) =
+                    api::get_wallet(&access_token, &entitlements, &puuid, &client_version, "ap")?;
 
-        let tokens_clone = tokens.clone();
-        let access_token =
-            match spawn_tokio(async move { auth::get_access_token(&tokens_clone).await }).await {
-                Ok(t) => t,
-                Err(e) => {
-                    this.update(cx, |this, cx| {
-                        this.loading = false;
-                        this.error = Some(e.to_string());
-                        cx.notify();
-                    })
-                    .ok();
-                    return;
-                }
-            };
+                let offers = store_data["SkinsPanelLayout"]["SingleItemStoreOffers"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default();
 
-        let at_clone = access_token.clone();
-        let entitlements =
-            match spawn_tokio(async move { auth::get_entitlements_token(&at_clone).await }).await {
-                Ok(t) => t,
-                Err(e) => {
-                    this.update(cx, |this, cx| {
-                        this.loading = false;
-                        this.error = Some(e.to_string());
-                        cx.notify();
-                    })
-                    .ok();
-                    return;
-                }
-            };
-
-        let at_clone = access_token.clone();
-        let (_game_id, puuid) =
-            match spawn_tokio(async move { auth::get_player_info(&at_clone).await }).await {
-                Ok(info) => info,
-                Err(e) => {
-                    this.update(cx, |this, cx| {
-                        this.loading = false;
-                        this.error = Some(e.to_string());
-                        cx.notify();
-                    })
-                    .ok();
-                    return;
-                }
-            };
-
-        let client_version =
-            match spawn_tokio(async move { api::cached_client_version().await }).await {
-                Ok(v) => v,
-                Err(e) => {
-                    this.update(cx, |this, cx| {
-                        this.loading = false;
-                        this.error = Some(e.to_string());
-                        cx.notify();
-                    })
-                    .ok();
-                    return;
-                }
-            };
-
-        let at_clone = access_token.clone();
-        let ent_clone = entitlements.clone();
-        let puuid_clone = puuid.clone();
-        let cv_clone = client_version.clone();
-        let store_data = match spawn_tokio(async move {
-            api::get_storefront(&at_clone, &ent_clone, &puuid_clone, &cv_clone, "ap").await
-        })
-        .await
-        {
-            Ok(d) => d,
-            Err(e) => {
-                this.update(cx, |this, cx| {
-                    this.loading = false;
-                    this.error = Some(e.to_string());
-                    cx.notify();
-                })
-                .ok();
-                return;
-            }
-        };
-
-        let at_clone = access_token.clone();
-        let ent_clone = entitlements.clone();
-        let puuid_clone = puuid.clone();
-        let cv_clone = client_version.clone();
-        let (vp, rp) = match spawn_tokio(async move {
-            api::get_wallet(&at_clone, &ent_clone, &puuid_clone, &cv_clone, "ap").await
-        })
-        .await
-        {
-            Ok(v) => v,
-            Err(e) => {
-                this.update(cx, |this, cx| {
-                    this.loading = false;
-                    this.error = Some(e.to_string());
-                    cx.notify();
-                })
-                .ok();
-                return;
-            }
-        };
-
-        let offers = store_data["SkinsPanelLayout"]["SingleItemStoreOffers"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
-
-        let reset_secs = store_data["SkinsPanelLayout"]
-            ["SingleItemOffersRemainingDurationInSeconds"]
-            .as_u64()
-            .unwrap_or(0);
-
-        let offers_clone = offers.clone();
-        let skins = match spawn_tokio(async move {
-            let mut tasks = Vec::new();
-            for offer in offers_clone {
-                let uuid = offer["OfferID"].as_str().unwrap_or("").to_string();
-                let cost = offer["Cost"]["85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741"]
+                let reset_secs = store_data["SkinsPanelLayout"]
+                    ["SingleItemOffersRemainingDurationInSeconds"]
                     .as_u64()
-                    .unwrap_or(0) as u32;
+                    .unwrap_or(0);
 
-                tasks.push(async move {
-                    let (name, icon_url) = store::get_skin_info(&uuid).await;
-                    let icon_path = store::download_single_image(&icon_url).await;
+                let mut skins = Vec::new();
+                for offer in offers {
+                    let uuid = offer["OfferID"].as_str().unwrap_or("").to_string();
+                    let cost = offer["Cost"]["85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741"]
+                        .as_u64()
+                        .unwrap_or(0) as u32;
+
+                    let (name, icon_url) = store::get_skin_info(&uuid);
+                    let icon_path = store::download_single_image(&icon_url);
                     let tier = tiers::get_tier_for_skin(&uuid, cost);
-                    crate::riot::SkinOffer {
+                    skins.push(crate::riot::SkinOffer {
                         name,
                         cost,
                         icon_path,
                         tier,
-                    }
-                });
+                    });
+                }
+
+                Ok::<AccountStore, crate::error::AppError>(AccountStore {
+                    vp,
+                    rp,
+                    skins,
+                    reset_secs,
+                })
+            })
+            .await;
+
+        match store_res {
+            Ok(store) => {
+                this.update(cx, |this, cx| {
+                    this.loading = false;
+                    this.store = Some(store);
+                    cx.notify();
+                })
+                .ok();
             }
-            Ok(futures_util::future::join_all(tasks).await)
-        })
-        .await
-        {
-            Ok(s) => s,
             Err(e) => {
                 this.update(cx, |this, cx| {
                     this.loading = false;
@@ -202,22 +110,8 @@ impl ShopDialogView {
                     cx.notify();
                 })
                 .ok();
-                return;
             }
-        };
-
-        // Completed!
-        this.update(cx, |this, cx| {
-            this.loading = false;
-            this.store = Some(AccountStore {
-                vp,
-                rp,
-                skins,
-                reset_secs,
-            });
-            cx.notify();
-        })
-        .ok();
+        }
     }
 
     pub fn new(label: String, cx: &mut Context<Self>) -> Self {

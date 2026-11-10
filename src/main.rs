@@ -6,7 +6,6 @@ mod cache;
 mod error;
 mod launcher;
 mod riot;
-mod runtime;
 mod session;
 mod theme;
 mod views;

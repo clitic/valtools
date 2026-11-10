@@ -71,20 +71,18 @@ pub fn get_player_info_from_id_token(id_token: &str) -> AppResult<(String, Strin
     Ok((format!("{}#{}", game_name, tag_line), puuid.to_string()))
 }
 
-pub async fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
+pub fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
     // Strategy 1: Use the refresh_token via the OAuth2 token endpoint
     let form_body = format!(
         "grant_type=refresh_token&client_id=riot-client&refresh_token={}",
         tokens.refresh_token
     );
-    if let Ok(resp) = api::client()
+    if let Ok(mut resp) = api::agent()
         .post("https://auth.riotgames.com/token")
         .header("Content-Type", "application/x-www-form-urlencoded")
-        .body(form_body)
-        .send()
-        .await
+        .send(&form_body)
     {
-        if let Ok(json) = resp.json::<Value>().await {
+        if let Ok(json) = resp.body_mut().read_json::<Value>() {
             if let Some(at) = json["access_token"].as_str() {
                 return Ok(at.to_string());
             }
@@ -106,15 +104,13 @@ pub async fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
     }
 
     // POST to init an auth session and capture the ssid cookie
-    if let Ok(resp) = api::client()
+    if let Ok(resp) = api::agent()
         .post("https://auth.riotgames.com/api/v1/authorization")
         .header("Content-Type", "application/json")
         .header("Cookie", cookie_parts.join("; "))
-        .json(&body)
-        .send()
-        .await
+        .send_json(&body)
     {
-        for val in resp.headers().get_all(reqwest::header::SET_COOKIE) {
+        for val in resp.headers().get_all("set-cookie") {
             if let Ok(val_str) = val.to_str() {
                 if val_str.starts_with("ssid=") {
                     if let Some(ssid_val) = val_str.split(';').next() {
@@ -134,8 +130,7 @@ pub async fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
             ("Content-Type", "application/json"),
         ],
         body,
-    )
-    .await?;
+    )?;
 
     if resp["type"].as_str() == Some("response") {
         if let Some(uri) = resp["response"]["parameters"]["uri"].as_str() {
@@ -156,7 +151,7 @@ pub async fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
     ))
 }
 
-pub async fn get_entitlements_token(access_token: &str) -> AppResult<String> {
+pub fn get_entitlements_token(access_token: &str) -> AppResult<String> {
     let auth = format!("Bearer {}", access_token);
     let resp = api::post_json(
         "https://entitlements.auth.riotgames.com/api/token/v1",
@@ -165,8 +160,7 @@ pub async fn get_entitlements_token(access_token: &str) -> AppResult<String> {
             ("Content-Type", "application/json"),
         ],
         serde_json::json!({}),
-    )
-    .await?;
+    )?;
 
     resp["entitlements_token"]
         .as_str()
@@ -174,14 +168,13 @@ pub async fn get_entitlements_token(access_token: &str) -> AppResult<String> {
         .ok_or_else(|| AppError::Api("No entitlements_token in response".into()))
 }
 
-pub async fn get_player_info(access_token: &str) -> AppResult<(String, String)> {
+pub fn get_player_info(access_token: &str) -> AppResult<(String, String)> {
     let auth = format!("Bearer {}", access_token);
     let resp = api::post_json(
         "https://auth.riotgames.com/userinfo",
         &[("Authorization", auth.as_str())],
         serde_json::json!({}),
-    )
-    .await?;
+    )?;
 
     let game_name = resp["acct"]["game_name"].as_str().unwrap_or("Unknown");
     let tag_line = resp["acct"]["tag_line"].as_str().unwrap_or("0000");

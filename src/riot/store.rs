@@ -25,7 +25,7 @@ static DOWNLOADS_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     dir
 });
 
-async fn download_skin_image(url: &str, uuid: &str) -> Option<PathBuf> {
+fn download_skin_image(url: &str, uuid: &str) -> Option<PathBuf> {
     if url.is_empty() {
         return None;
     }
@@ -35,23 +35,23 @@ async fn download_skin_image(url: &str, uuid: &str) -> Option<PathBuf> {
         return Some(path);
     }
 
-    let bytes = api::download_bytes(url).await?;
+    let bytes = api::download_bytes(url)?;
     std::fs::write(&path, &bytes).ok()?;
     Some(path)
 }
 
 /// Download a single skin image by URL. Returns the path if successful.
-pub async fn download_single_image(url: &str) -> Option<PathBuf> {
-    download_skin_image(url, icon_uuid(url)).await
+pub fn download_single_image(url: &str) -> Option<PathBuf> {
+    download_skin_image(url, icon_uuid(url))
 }
 
-pub async fn get_skin_info(skin_uuid: &str) -> (String, String) {
+pub fn get_skin_info(skin_uuid: &str) -> (String, String) {
     let url = format!(
         "https://valorant-api.com/v1/weapons/skinlevels/{}",
         skin_uuid
     );
 
-    if let Ok(json) = api::get_json(&url, &[]).await {
+    if let Ok(json) = api::get_json(&url, &[]) {
         let name = json["data"]["displayName"]
             .as_str()
             .unwrap_or("Unknown Skin")

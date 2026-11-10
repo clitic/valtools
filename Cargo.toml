@@ -7,19 +7,16 @@ exclude = ["images"]
 
 [dependencies]
 base64 = "0.23"
-futures-util = "0.3"
 gpui-kit = "0.9.1"
 open = "5.4"
-reqwest = { version = "0.13", default-features = false, features = [ # https://docs.rs/crate/reqwest/latest/features
-    "charset",      # default
-    "http2",        # default
-    "system-proxy", # default
-    "json",
-    "native-tls",
-] }
 serde_json = "1"
 serde_yaml = "0.9"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+ureq = { version = "3.5.1", default-features = false, features = [ # https://docs.rs/crate/ureq/3.5.1/features
+    "gzip",                  # default
+    "json",
+    "native-tls-no-default",
+    "platform-verifier",
+] }
 
 [build-dependencies]
 winresource = "0.1"

@@ -59,8 +59,8 @@ impl From<serde_yaml::Error> for AppError {
     }
 }
 
-impl From<reqwest::Error> for AppError {
-    fn from(e: reqwest::Error) -> Self {
+impl From<ureq::Error> for AppError {
+    fn from(e: ureq::Error) -> Self {
         Self::Http(e.to_string())
     }
 }
