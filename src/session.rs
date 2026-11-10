@@ -1,19 +1,6 @@
+use crate::globals::{ACCOUNTS_DIR, CONFIG_PATH, PRIVATE_SETTINGS_PATH};
 use crate::launcher;
-use std::{fs, path::PathBuf, sync::LazyLock};
-
-pub static PRIVATE_SETTINGS_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
-    crate::LOCAL_APP_DATA
-        .join("Riot Games")
-        .join("Riot Client")
-        .join("Data")
-        .join("RiotGamesPrivateSettings.yaml")
-});
-
-pub static CONFIG_PATH: LazyLock<PathBuf> =
-    LazyLock::new(|| crate::LOCAL_APP_DATA.join("ValTools").join("active.txt"));
-
-pub static ACCOUNTS_DIR: LazyLock<PathBuf> =
-    LazyLock::new(|| crate::LOCAL_APP_DATA.join("ValTools").join("Accounts"));
+use std::fs;
 
 #[derive(Debug, Clone)]
 pub struct Session {

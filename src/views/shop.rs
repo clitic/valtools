@@ -22,17 +22,14 @@ pub struct ShopDialogView {
 
 impl ShopDialogView {
     async fn fetch_flow(label: String, this: WeakEntity<Self>, cx: &mut AsyncApp) {
-        let yaml_path = crate::session::ACCOUNTS_DIR
+        let yaml_path = crate::globals::ACCOUNTS_DIR
             .join(&label)
             .join("RiotGamesPrivateSettings.yaml");
 
         if !yaml_path.exists() {
             this.update(cx, |this, cx| {
                 this.loading = false;
-                this.error = Some(format!(
-                    "No saved session found for '{}'. Please log in via Riot Client and click 'Save Session' in ValTools.",
-                    label
-                ));
+                this.error = Some(format!("No saved session for '{}'.", label));
                 cx.notify();
             })
             .ok();
@@ -85,7 +82,7 @@ impl ShopDialogView {
                     });
                 }
 
-                Ok::<AccountStore, crate::error::AppError>(AccountStore {
+                Ok::<AccountStore, String>(AccountStore {
                     vp,
                     rp,
                     skins,
@@ -106,7 +103,7 @@ impl ShopDialogView {
             Err(e) => {
                 this.update(cx, |this, cx| {
                     this.loading = false;
-                    this.error = Some(e.to_string());
+                    this.error = Some(e);
                     cx.notify();
                 })
                 .ok();

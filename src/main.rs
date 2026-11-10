@@ -3,7 +3,7 @@
 mod app;
 mod assets;
 mod cache;
-mod error;
+mod globals;
 mod launcher;
 mod riot;
 mod session;
@@ -11,14 +11,6 @@ mod theme;
 mod views;
 
 use gpui_kit::*;
-use std::{path::PathBuf, sync::LazyLock};
-
-pub static LOCAL_APP_DATA: LazyLock<PathBuf> = LazyLock::new(|| {
-    PathBuf::from(
-        std::env::var("LOCALAPPDATA")
-            .unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Local".into()),
-    )
-});
 
 fn main() {
     std::panic::set_hook(Box::new(|info| {

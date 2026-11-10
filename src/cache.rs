@@ -1,7 +1,4 @@
-use std::{fs, path::Path, path::PathBuf, sync::LazyLock};
-
-pub static VALORANT_LOCAL_DIR: LazyLock<PathBuf> =
-    LazyLock::new(|| crate::LOCAL_APP_DATA.join("VALORANT"));
+use std::{fs, path::Path, path::PathBuf};
 
 pub struct CacheEntry {
     pub path: PathBuf,
@@ -9,7 +6,7 @@ pub struct CacheEntry {
 }
 
 pub fn list_cache_entries() -> Vec<CacheEntry> {
-    let dir = &*VALORANT_LOCAL_DIR;
+    let dir = &*crate::globals::VALORANT_LOCAL_DIR;
     let mut entries = Vec::new();
 
     if !dir.exists() {

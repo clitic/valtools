@@ -1,7 +1,6 @@
 use super::{api, auth, tiers::SkinTier};
-use crate::error::{AppError, AppResult};
+use crate::globals::{DOWNLOADS_DIR, PRIVATE_SETTINGS_PATH};
 use std::path::PathBuf;
-use std::sync::LazyLock;
 
 #[derive(Debug, Clone)]
 pub struct SkinOffer {
@@ -18,12 +17,6 @@ pub struct AccountStore {
     pub skins: Vec<SkinOffer>,
     pub reset_secs: u64,
 }
-
-static DOWNLOADS_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
-    let dir = crate::LOCAL_APP_DATA.join("ValTools").join("Downloads");
-    std::fs::create_dir_all(&dir).ok();
-    dir
-});
 
 fn download_skin_image(url: &str, uuid: &str) -> Option<PathBuf> {
     if url.is_empty() {
@@ -90,18 +83,14 @@ pub fn format_reset_time(secs: u64) -> String {
 }
 
 /// Fetch game_id (Name#Tag) from the current active Riot session.
-pub fn fetch_game_id_from_session() -> AppResult<String> {
-    let yaml_path = crate::LOCAL_APP_DATA
-        .join("Riot Games")
-        .join("Riot Client")
-        .join("Data")
-        .join("RiotGamesPrivateSettings.yaml");
+pub fn fetch_game_id_from_session() -> Result<String, String> {
+    let yaml_path = &*PRIVATE_SETTINGS_PATH;
 
     if !yaml_path.exists() {
-        return Err(AppError::App("No active Riot session found".into()));
+        return Err("No active Riot session found".into());
     }
 
-    let tokens = auth::extract_session_tokens(&yaml_path)?;
+    let tokens = auth::extract_session_tokens(yaml_path)?;
     let (game_id, _) = auth::get_player_info_from_id_token(&tokens.id_token)?;
     Ok(game_id)
 }

@@ -55,10 +55,11 @@ impl AppView {
 
     pub fn prepare_new_login(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if let Err(e) = session::prepare_new_login() {
-            self.status_message = e.to_string();
+            self.status_message = format!("Setup failed: {}", e);
             self.status_is_error = true;
         } else {
-            self.status_message = "Riot Client opened - log in and click Save Session.".into();
+            self.status_message =
+                "Opening riot client, please log in and save your session.".into();
             self.status_is_error = false;
             self.refresh_accounts(cx);
         }
@@ -66,7 +67,7 @@ impl AppView {
     }
 
     pub fn save_session(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        self.status_message = "Saving session...".into();
+        self.status_message = "Saving session".into();
         self.status_is_error = false;
         cx.notify();
 
@@ -84,12 +85,12 @@ impl AppView {
             this.update(cx, |this, cx| {
                 match result {
                     Ok(game_id) => {
-                        this.status_message = format!("Session saved as '{}'.", game_id);
+                        this.status_message = format!("{}'s session saved", game_id);
                         this.status_is_error = false;
                         this.refresh_accounts(cx);
                     }
                     Err(e) => {
-                        this.status_message = e.to_string();
+                        this.status_message = format!("Save failed: {}", e);
                         this.status_is_error = true;
                     }
                 }
@@ -101,7 +102,7 @@ impl AppView {
     }
 
     pub fn switch_account(&mut self, label: String, cx: &mut Context<Self>) {
-        self.status_message = format!("Switching to '{}'...", label);
+        self.status_message = format!("Switching to {}", label);
         self.status_is_error = false;
         cx.notify();
 
@@ -114,7 +115,7 @@ impl AppView {
 
             if is_running {
                 this.update(cx, |this, cx| {
-                    this.status_message = "Closing running Riot Client...".into();
+                    this.status_message = "Closing riot client".into();
                     cx.notify();
                 })
                 .ok();
@@ -136,7 +137,7 @@ impl AppView {
             }
 
             this.update(cx, |this, cx| {
-                this.status_message = format!("Applying session for '{}'...", label_clone);
+                this.status_message = format!("Applying session for {}", label_clone);
                 cx.notify();
             })
             .ok();
@@ -149,7 +150,7 @@ impl AppView {
 
             if let Err(e) = switch_res {
                 this.update(cx, |this, cx| {
-                    this.status_message = format!("Failed to switch session: {}", e);
+                    this.status_message = format!("Switch failed: {}", e);
                     this.status_is_error = true;
                     cx.notify();
                 })
@@ -164,14 +165,14 @@ impl AppView {
 
             if let Err(e) = launch_res {
                 this.update(cx, |this, cx| {
-                    this.status_message = format!("Failed to launch Riot Client: {}", e);
+                    this.status_message = format!("Launch failed: {}", e);
                     this.status_is_error = true;
                     cx.notify();
                 })
                 .ok();
             } else {
                 this.update(cx, |this, cx| {
-                    this.status_message = format!("Riot Client launched as '{}'.", label_clone);
+                    this.status_message = format!("Switched to {}", label_clone);
                     this.status_is_error = false;
                     this.refresh_accounts(cx);
                     cx.notify();
@@ -184,10 +185,10 @@ impl AppView {
 
     pub fn delete_account(&mut self, label: &str, cx: &mut Context<Self>) {
         if let Err(e) = session::delete_account(label) {
-            self.status_message = format!("Failed to delete: {}", e);
+            self.status_message = format!("Delete failed: {}", e);
             self.status_is_error = true;
         } else {
-            self.status_message = format!("Account '{}' removed.", label);
+            self.status_message = format!("Removed {}", label);
             self.status_is_error = false;
             self.refresh_accounts(cx);
         }
@@ -196,13 +197,13 @@ impl AppView {
 
     pub fn execute_clean_cache(&mut self, cx: &mut Context<Self>) {
         if self.cache_paths.is_empty() {
-            self.status_message = "No cache items found to clean.".into();
+            self.status_message = "Cache is already clean".into();
             self.status_is_error = false;
             cx.notify();
             return;
         }
 
-        self.status_message = "Cleaning cache...".into();
+        self.status_message = "Cleaning cache".into();
         self.status_is_error = false;
         cx.notify();
 
@@ -216,14 +217,14 @@ impl AppView {
             this.update(cx, |this, cx| {
                 if errors.is_empty() {
                     this.status_message = format!(
-                        "Cleaned {} items, {} freed.",
+                        "Cleaned {} items ({} freed).",
                         deleted,
                         cache::format_size(freed)
                     );
                     this.status_is_error = false;
                 } else {
                     this.status_message = format!(
-                        "Cleaned {} items ({} freed). {} item(s) could not be removed.",
+                        "Cleaned {} items ({} freed). {} failed.",
                         deleted,
                         cache::format_size(freed),
                         errors.len()

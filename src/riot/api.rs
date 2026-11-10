@@ -1,51 +1,44 @@
-use crate::error::{AppError, AppResult};
+use crate::globals::{CLIENT_VERSION, HTTP_AGENT};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
-use std::sync::{LazyLock, OnceLock};
-
-static AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::Agent::new_with_defaults());
 
 pub fn agent() -> &'static ureq::Agent {
-    &AGENT
+    &HTTP_AGENT
 }
 
-pub fn post_json(url: &str, headers: &[(&str, &str)], body: Value) -> AppResult<Value> {
-    let mut req = AGENT.post(url);
+pub fn post_json(url: &str, headers: &[(&str, &str)], body: Value) -> Result<Value, String> {
+    let mut req = HTTP_AGENT.post(url);
     for &(k, v) in headers {
         req = req.header(k, v);
     }
-    let mut resp = req.send_json(&body)?;
-    let json: Value = resp.body_mut().read_json()?;
-    Ok(json)
+    let mut resp = req.send_json(&body).map_err(|e| e.to_string())?;
+    resp.body_mut().read_json().map_err(|e| e.to_string())
 }
 
-pub fn get_json(url: &str, headers: &[(&str, &str)]) -> AppResult<Value> {
-    let mut req = AGENT.get(url);
+pub fn get_json(url: &str, headers: &[(&str, &str)]) -> Result<Value, String> {
+    let mut req = HTTP_AGENT.get(url);
     for &(k, v) in headers {
         req = req.header(k, v);
     }
-    let mut resp = req.call()?;
-    let json: Value = resp.body_mut().read_json()?;
-    Ok(json)
+    let mut resp = req.call().map_err(|e| e.to_string())?;
+    resp.body_mut().read_json().map_err(|e| e.to_string())
 }
 
 /// Download raw bytes from a URL using the shared ureq Agent.
 pub fn download_bytes(url: &str) -> Option<Vec<u8>> {
-    let mut resp = AGENT.get(url).call().ok()?;
+    let mut resp = HTTP_AGENT.get(url).call().ok()?;
     resp.body_mut().read_to_vec().ok()
 }
 
-fn get_client_version() -> AppResult<String> {
+fn get_client_version() -> Result<String, String> {
     let resp = get_json("https://valorant-api.com/v1/version", &[])?;
     resp["data"]["riotClientVersion"]
         .as_str()
         .map(|s| s.to_string())
-        .ok_or_else(|| AppError::Api("No client version found".into()))
+        .ok_or_else(|| "No client version found".to_string())
 }
 
-static CLIENT_VERSION: OnceLock<String> = OnceLock::new();
-
-pub fn cached_client_version() -> AppResult<String> {
+pub fn cached_client_version() -> Result<String, String> {
     if let Some(v) = CLIENT_VERSION.get() {
         return Ok(v.clone());
     }
@@ -69,7 +62,7 @@ pub fn get_storefront(
     puuid: &str,
     client_version: &str,
     region: &str,
-) -> AppResult<Value> {
+) -> Result<Value, String> {
     let url = format!(
         "https://pd.{}.a.pvp.net/store/v3/storefront/{}",
         region, puuid
@@ -96,7 +89,7 @@ pub fn get_wallet(
     puuid: &str,
     client_version: &str,
     region: &str,
-) -> AppResult<(u32, u32)> {
+) -> Result<(u32, u32), String> {
     let url = format!("https://pd.{}.a.pvp.net/store/v1/wallet/{}", region, puuid);
     let auth = format!("Bearer {}", access_token);
     let plat = platform_encoded();

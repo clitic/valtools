@@ -1,5 +1,4 @@
 use super::api;
-use crate::error::{AppError, AppResult};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
@@ -12,20 +11,20 @@ pub struct SessionTokens {
     pub tdid: Option<String>,
 }
 
-pub fn extract_session_tokens(yaml_path: &Path) -> AppResult<SessionTokens> {
-    let content = std::fs::read_to_string(yaml_path)?;
-    let yaml: serde_yaml::Value = serde_yaml::from_str(&content)?;
+pub fn extract_session_tokens(yaml_path: &Path) -> Result<SessionTokens, String> {
+    let content = std::fs::read_to_string(yaml_path).map_err(|e| e.to_string())?;
+    let yaml: serde_yaml::Value = serde_yaml::from_str(&content).map_err(|e| e.to_string())?;
 
     let riot_client = &yaml["psl"]["authorization"]["riot-client"];
 
     let id_token = riot_client["id_token"]
         .as_str()
-        .ok_or(AppError::Api("No id_token found in settings".into()))?
+        .ok_or_else(|| "No id_token found in settings".to_string())?
         .to_string();
 
     let refresh_token = riot_client["refresh_token"]
         .as_str()
-        .ok_or(AppError::Api("No refresh_token found in settings".into()))?
+        .ok_or_else(|| "No refresh_token found in settings".to_string())?
         .to_string();
 
     let tdid = yaml["rso-authenticator"]["tdid"]["value"]
@@ -40,10 +39,10 @@ pub fn extract_session_tokens(yaml_path: &Path) -> AppResult<SessionTokens> {
 }
 
 /// Decode the id_token JWT to extract player info without an API call.
-pub fn get_player_info_from_id_token(id_token: &str) -> AppResult<(String, String)> {
+pub fn get_player_info_from_id_token(id_token: &str) -> Result<(String, String), String> {
     let parts = id_token.split('.').collect::<Vec<&str>>();
     if parts.len() < 2 {
-        return Err(AppError::Api("Invalid id_token format".into()));
+        return Err("Invalid id_token format".into());
     }
 
     // Decode the payload (second part) with padding tolerance
@@ -58,20 +57,20 @@ pub fn get_player_info_from_id_token(id_token: &str) -> AppResult<(String, Strin
             };
             STANDARD.decode(&padded)
         })
-        .map_err(|e| AppError::Api(format!("Failed to decode id_token payload: {}", e)))?;
+        .map_err(|e| format!("Failed to decode id_token: {}", e))?;
 
-    let payload: Value = serde_json::from_slice(&payload_bytes)?;
+    let payload: Value = serde_json::from_slice(&payload_bytes).map_err(|e| e.to_string())?;
 
     let game_name = payload["acct"]["game_name"].as_str().unwrap_or("Unknown");
     let tag_line = payload["acct"]["tag_line"].as_str().unwrap_or("0000");
     let puuid = payload["sub"]
         .as_str()
-        .ok_or(AppError::Api("No sub (puuid) in id_token".into()))?;
+        .ok_or_else(|| "No puuid in id_token".to_string())?;
 
     Ok((format!("{}#{}", game_name, tag_line), puuid.to_string()))
 }
 
-pub fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
+pub fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
     // Strategy 1: Use the refresh_token via the OAuth2 token endpoint
     let form_body = format!(
         "grant_type=refresh_token&client_id=riot-client&refresh_token={}",
@@ -146,12 +145,10 @@ pub fn get_access_token(tokens: &SessionTokens) -> AppResult<String> {
         }
     }
 
-    Err(AppError::Api(
-        "Your Riot session has expired. Please launch Riot Client, log into this account, and click 'Save Session' in ValTools to renew it.".into()
-    ))
+    Err("Session expired. Log in and save session.".into())
 }
 
-pub fn get_entitlements_token(access_token: &str) -> AppResult<String> {
+pub fn get_entitlements_token(access_token: &str) -> Result<String, String> {
     let auth = format!("Bearer {}", access_token);
     let resp = api::post_json(
         "https://entitlements.auth.riotgames.com/api/token/v1",
@@ -165,10 +162,10 @@ pub fn get_entitlements_token(access_token: &str) -> AppResult<String> {
     resp["entitlements_token"]
         .as_str()
         .map(|s| s.to_string())
-        .ok_or_else(|| AppError::Api("No entitlements_token in response".into()))
+        .ok_or_else(|| "No entitlements token in response".to_string())
 }
 
-pub fn get_player_info(access_token: &str) -> AppResult<(String, String)> {
+pub fn get_player_info(access_token: &str) -> Result<(String, String), String> {
     let auth = format!("Bearer {}", access_token);
     let resp = api::post_json(
         "https://auth.riotgames.com/userinfo",
@@ -180,7 +177,7 @@ pub fn get_player_info(access_token: &str) -> AppResult<(String, String)> {
     let tag_line = resp["acct"]["tag_line"].as_str().unwrap_or("0000");
     let puuid = resp["sub"]
         .as_str()
-        .ok_or(AppError::Api("No puuid in userinfo".into()))?;
+        .ok_or_else(|| "No puuid in userinfo".to_string())?;
 
     Ok((format!("{}#{}", game_name, tag_line), puuid.to_string()))
 }
