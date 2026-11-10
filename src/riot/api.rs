@@ -2,20 +2,8 @@ use crate::error::{AppError, AppResult};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
 use std::sync::{LazyLock, OnceLock};
-use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
 
-static AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
-    let config = ureq::config::Config::builder()
-        .tls_config(
-            TlsConfig::builder()
-                .provider(TlsProvider::NativeTls)
-                .root_certs(RootCerts::PlatformVerifier)
-                .build(),
-        )
-        .user_agent("RiotClient/99.0.0.0000000.0000000 rso-auth (Windows;10;;Professional, x64)")
-        .build();
-    ureq::Agent::new_with_config(config)
-});
+static AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::Agent::new_with_defaults());
 
 pub fn agent() -> &'static ureq::Agent {
     &AGENT

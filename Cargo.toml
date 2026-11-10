@@ -1,6 +1,6 @@
 [package]
 name = "valtools"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "A lightweight Valorant toolkit for account switching, shop viewing, and cache cleaning"
 exclude = ["images"]
@@ -8,15 +8,11 @@ exclude = ["images"]
 [dependencies]
 base64 = "0.23"
 gpui-kit = "0.9.1"
+log = "0.4"
 open = "5.4"
 serde_json = "1"
 serde_yaml = "0.9"
-ureq = { version = "3.5.1", default-features = false, features = [ # https://docs.rs/crate/ureq/3.5.1/features
-    "gzip",                  # default
-    "json",
-    "native-tls-no-default",
-    "platform-verifier",
-] }
+ureq = { version = "3.5", features = ["json"] }
 
 [build-dependencies]
 winresource = "0.1"
