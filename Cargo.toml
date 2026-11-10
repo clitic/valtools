@@ -16,7 +16,6 @@ reqwest = { version = "0.13", default-features = false, features = [ # https://d
     "system-proxy", # default
     "json",
     "native-tls",
-    "json",
 ] }
 serde_json = "1"
 serde_yaml = "0.9"

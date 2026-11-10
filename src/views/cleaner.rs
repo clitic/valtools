@@ -3,7 +3,7 @@ use gpui_kit::{App, Entity, Window};
 
 use crate::app::AppView;
 
-pub fn open_cache_dialog(
+pub fn open_cleaner_dialog(
     size_str: String,
     entity: Entity<AppView>,
     window: &mut Window,

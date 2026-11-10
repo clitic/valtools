@@ -1,4 +1,4 @@
-use crate::client;
+use crate::launcher;
 use std::{fs, path::PathBuf, sync::LazyLock};
 
 pub static PRIVATE_SETTINGS_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -16,10 +16,12 @@ pub static ACCOUNTS_DIR: LazyLock<PathBuf> =
     LazyLock::new(|| crate::LOCAL_APP_DATA.join("ValTools").join("Accounts"));
 
 #[derive(Debug, Clone)]
-pub struct Account {
+pub struct Session {
     pub label: String,
     pub is_active: bool,
 }
+
+pub type Account = Session;
 
 #[derive(Debug, Clone, Default)]
 pub struct AppConfig {
@@ -32,7 +34,9 @@ impl AppConfig {
         if let Ok(contents) = fs::read_to_string(path) {
             let trimmed = contents.trim();
             if !trimmed.is_empty() {
-                return AppConfig { active: Some(trimmed.to_string()) };
+                return AppConfig {
+                    active: Some(trimmed.to_string()),
+                };
             }
         }
         AppConfig::default()
@@ -48,7 +52,7 @@ impl AppConfig {
     }
 }
 
-pub fn list_accounts() -> Vec<Account> {
+pub fn list_accounts() -> Vec<Session> {
     let accounts_dir = &*ACCOUNTS_DIR;
     if !accounts_dir.exists() {
         return Vec::new();
@@ -64,7 +68,7 @@ pub fn list_accounts() -> Vec<Account> {
                 let label = entry.file_name().to_string_lossy().to_string();
                 let backup = entry.path().join("RiotGamesPrivateSettings.yaml");
                 if backup.exists() {
-                    accounts.push(Account {
+                    accounts.push(Session {
                         is_active: label == active,
                         label,
                     });
@@ -79,8 +83,8 @@ pub fn list_accounts() -> Vec<Account> {
 }
 
 pub fn prepare_new_login() -> Result<(), String> {
-    if client::is_riot_client_running() {
-        client::kill_riot_client_process()?;
+    if launcher::is_riot_client_running() {
+        launcher::kill_riot_client_process()?;
     }
 
     let settings = &*PRIVATE_SETTINGS_PATH;
@@ -92,7 +96,7 @@ pub fn prepare_new_login() -> Result<(), String> {
     config.active = None;
     config.save()?;
 
-    client::launch_riot_client()?;
+    launcher::launch_riot_client()?;
     Ok(())
 }
 

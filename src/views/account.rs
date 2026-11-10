@@ -8,7 +8,7 @@ use gpui_kit::{
     Styled as _,
 };
 
-use crate::{accounts::Account, app::AppView};
+use crate::{app::AppView, session::Account};
 
 pub fn render_account_row(
     account: &Account,
@@ -44,7 +44,6 @@ pub fn render_account_row(
             theme.secondary.opacity(0.4)
         })
         .hover(|s| s.bg(theme.accent.opacity(0.4)))
-        // Left section: Label
         .child(
             div()
                 .flex()
@@ -64,14 +63,12 @@ pub fn render_account_row(
                         .child(label.clone()),
                 ),
         )
-        // Right section: Action buttons
         .child(
             div()
                 .flex()
                 .items_center()
                 .gap_1()
                 .flex_shrink_0()
-                // Delete Button (Danger)
                 .child(
                     Button::new(ElementId::NamedInteger("btn_del".into(), index as u64))
                         .ghost()
@@ -100,7 +97,6 @@ pub fn render_account_row(
                             });
                         }),
                 )
-                // Store Button (ShoppingCart)
                 .child(
                     Button::new(ElementId::NamedInteger("btn_shop".into(), index as u64))
                         .secondary()
@@ -113,7 +109,6 @@ pub fn render_account_row(
                             AppView::open_shop_dialog(label_for_shop.clone(), window, cx);
                         }),
                 )
-                // Riot Client Button (Primary)
                 .child(
                     Button::new(ElementId::NamedInteger("btn_riot".into(), index as u64))
                         .primary()

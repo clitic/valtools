@@ -1,11 +1,9 @@
-use std::{fs, path::PathBuf, sync::LazyLock};
+use std::{fs, path::Path, path::PathBuf, sync::LazyLock};
 
 pub static VALORANT_LOCAL_DIR: LazyLock<PathBuf> =
     LazyLock::new(|| crate::LOCAL_APP_DATA.join("VALORANT"));
 
-#[allow(dead_code)]
 pub struct CacheEntry {
-    pub name: String,
     pub path: PathBuf,
     pub size: u64,
 }
@@ -26,7 +24,6 @@ pub fn list_cache_entries() -> Vec<CacheEntry> {
         if let Ok(dir_entries) = fs::read_dir(&scan_dir) {
             for entry in dir_entries.flatten() {
                 let path = entry.path();
-                let name = entry.file_name().to_string_lossy().to_string();
 
                 // Skip the "Saved" dir itself since we scan inside it
                 if path == dir.join("Saved") {
@@ -41,11 +38,7 @@ pub fn list_cache_entries() -> Vec<CacheEntry> {
                     continue;
                 };
 
-                entries.push(CacheEntry {
-                    name,
-                    path,
-                    size,
-                });
+                entries.push(CacheEntry { path, size });
             }
         }
     }
@@ -86,8 +79,7 @@ pub fn clean_entries(paths: &[PathBuf]) -> (usize, u64, Vec<String>) {
     (deleted, freed, errors)
 }
 
-
-pub fn dir_size(path: &PathBuf) -> u64 {
+pub fn dir_size(path: &Path) -> u64 {
     if !path.exists() {
         return 0;
     }

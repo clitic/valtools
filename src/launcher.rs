@@ -16,21 +16,6 @@ pub fn launch_riot_client() -> Result<(), String> {
     Ok(())
 }
 
-pub fn launch_valorant() -> Result<(), String> {
-    let client = Path::new("C:\\Riot Games\\Riot Client\\RiotClientServices.exe");
-
-    if !client.exists() {
-        return Err("Could not find RiotClientServices.exe".into());
-    }
-
-    Command::new(client)
-        .args(["--launch-product=valorant", "--launch-patchline=live"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-        .map_err(|e| format!("Failed to launch Valorant: {}", e))?;
-    Ok(())
-}
-
 pub fn is_riot_client_running() -> bool {
     Command::new("tasklist")
         .args(["/FI", "IMAGENAME eq RiotClientServices.exe", "/NH"])

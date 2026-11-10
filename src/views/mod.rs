@@ -1,4 +1,6 @@
-pub mod account_row;
-pub mod cache_dialog;
-pub mod shop_dialog;
-
+pub mod account;
+pub mod card;
+pub mod cleaner;
+pub mod footer;
+pub mod header;
+pub mod shop;
