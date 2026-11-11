@@ -1,17 +1,47 @@
-use crate::globals::CLIENT;
+use crate::globals::{CLIENT, RIOT_CLIENT_PRIVATE_SETTINGS_PATH};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
 
-/// Tokens extracted from RiotGamesPrivateSettings.yaml.
 #[derive(Clone, Debug)]
-pub struct SessionTokens {
-    pub id_token: String,
-    pub refresh_token: String,
-    pub tdid: Option<String>,
+pub struct RiotAuth {
+    pub access_token: String,
+    pub entitlements: String,
+    pub puuid: String,
 }
 
-pub fn extract_session_tokens(yaml_path: &Path) -> Result<SessionTokens, String> {
+struct SessionTokens {
+    id_token: String,
+    refresh_token: String,
+    tdid: Option<String>,
+}
+
+/// Fetch game_id (Name#Tag) from the current active Riot session.
+pub fn fetch_game_id_from_session() -> Result<String, String> {
+    let yaml_path = &*RIOT_CLIENT_PRIVATE_SETTINGS_PATH;
+    if !yaml_path.exists() {
+        return Err("No active Riot session found".into());
+    }
+
+    let tokens = extract_session_tokens(yaml_path)?;
+    decode_game_id_from_id_token(&tokens.id_token)
+}
+
+/// Exchange saved Riot session tokens for API access token, entitlements JWT, and PUUID.
+pub fn authenticate(yaml_path: &Path) -> Result<RiotAuth, String> {
+    let tokens = extract_session_tokens(yaml_path)?;
+    let access_token = get_access_token(&tokens)?;
+    let entitlements = get_entitlements_token(&access_token)?;
+    let puuid = get_player_puuid(&access_token)?;
+
+    Ok(RiotAuth {
+        access_token,
+        entitlements,
+        puuid,
+    })
+}
+
+fn extract_session_tokens(yaml_path: &Path) -> Result<SessionTokens, String> {
     let content = std::fs::read_to_string(yaml_path).map_err(|e| e.to_string())?;
     let yaml: serde_yaml::Value = serde_yaml::from_str(&content).map_err(|e| e.to_string())?;
 
@@ -38,15 +68,12 @@ pub fn extract_session_tokens(yaml_path: &Path) -> Result<SessionTokens, String>
     })
 }
 
-/// Decode the id_token JWT to extract player info without an API call.
-pub fn get_player_info_from_id_token(id_token: &str) -> Result<(String, String), String> {
-    let parts = id_token.split('.').collect::<Vec<&str>>();
-    if parts.len() < 2 {
-        return Err("Invalid id_token format".into());
-    }
+fn decode_game_id_from_id_token(id_token: &str) -> Result<String, String> {
+    let payload_b64 = id_token
+        .split('.')
+        .nth(1)
+        .ok_or_else(|| "Invalid id_token format".to_string())?;
 
-    // Decode the payload (second part) with padding tolerance
-    let payload_b64 = parts[1];
     let payload_bytes = STANDARD
         .decode(payload_b64)
         .or_else(|_| {
@@ -61,16 +88,17 @@ pub fn get_player_info_from_id_token(id_token: &str) -> Result<(String, String),
 
     let payload: Value = serde_json::from_slice(&payload_bytes).map_err(|e| e.to_string())?;
 
+    if payload["sub"].as_str().is_none() {
+        return Err("No puuid in id_token".into());
+    }
+
     let game_name = payload["acct"]["game_name"].as_str().unwrap_or("Unknown");
     let tag_line = payload["acct"]["tag_line"].as_str().unwrap_or("0000");
-    let puuid = payload["sub"]
-        .as_str()
-        .ok_or_else(|| "No puuid in id_token".to_string())?;
 
-    Ok((format!("{}#{}", game_name, tag_line), puuid.to_string()))
+    Ok(format!("{}#{}", game_name, tag_line))
 }
 
-pub fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
+fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
     // Strategy 1: Use the refresh_token via the OAuth2 token endpoint
     let form_body = format!(
         "grant_type=refresh_token&client_id=riot-client&refresh_token={}",
@@ -147,7 +175,7 @@ pub fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
     Err("Session expired. Log in and save session.".into())
 }
 
-pub fn get_entitlements_token(access_token: &str) -> Result<String, String> {
+fn get_entitlements_token(access_token: &str) -> Result<String, String> {
     let auth = format!("Bearer {}", access_token);
     let mut resp = CLIENT
         .post("https://entitlements.auth.riotgames.com/api/token/v1")
@@ -163,7 +191,7 @@ pub fn get_entitlements_token(access_token: &str) -> Result<String, String> {
         .ok_or_else(|| "No entitlements token in response".to_string())
 }
 
-pub fn get_player_info(access_token: &str) -> Result<(String, String), String> {
+fn get_player_puuid(access_token: &str) -> Result<String, String> {
     let auth = format!("Bearer {}", access_token);
     let mut resp = CLIENT
         .post("https://auth.riotgames.com/userinfo")
@@ -172,11 +200,8 @@ pub fn get_player_info(access_token: &str) -> Result<(String, String), String> {
         .map_err(|e| e.to_string())?;
     let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
 
-    let game_name = resp["acct"]["game_name"].as_str().unwrap_or("Unknown");
-    let tag_line = resp["acct"]["tag_line"].as_str().unwrap_or("0000");
-    let puuid = resp["sub"]
+    resp["sub"]
         .as_str()
-        .ok_or_else(|| "No puuid in userinfo".to_string())?;
-
-    Ok((format!("{}#{}", game_name, tag_line), puuid.to_string()))
+        .map(|s| s.to_string())
+        .ok_or_else(|| "No puuid in userinfo".to_string())
 }

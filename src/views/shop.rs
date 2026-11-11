@@ -8,11 +8,7 @@ use gpui_kit::{
 };
 
 use super::card::{render_skeleton_card, render_skin_card};
-use crate::riot::{
-    api, auth,
-    store::{self, AccountStore},
-    tiers::SkinTier,
-};
+use crate::riot::{store, AccountStore};
 
 pub struct ShopDialogView {
     loading: bool,
@@ -38,49 +34,7 @@ impl ShopDialogView {
 
         let store_res = cx
             .background_executor()
-            .spawn(async move {
-                let tokens = auth::extract_session_tokens(&yaml_path)?;
-                let access_token = auth::get_access_token(&tokens)?;
-                let entitlements = auth::get_entitlements_token(&access_token)?;
-                let (_game_id, puuid) = auth::get_player_info(&access_token)?;
-                let store_data = api::get_storefront(&access_token, &entitlements, &puuid, "ap")?;
-                let (vp, rp) = api::get_wallet(&access_token, &entitlements, &puuid, "ap")?;
-
-                let offers = store_data["SkinsPanelLayout"]["SingleItemStoreOffers"]
-                    .as_array()
-                    .cloned()
-                    .unwrap_or_default();
-
-                let reset_secs = store_data["SkinsPanelLayout"]
-                    ["SingleItemOffersRemainingDurationInSeconds"]
-                    .as_u64()
-                    .unwrap_or(0);
-
-                let mut skins = Vec::new();
-                for offer in offers {
-                    let uuid = offer["OfferID"].as_str().unwrap_or("").to_string();
-                    let cost = offer["Cost"]["85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741"]
-                        .as_u64()
-                        .unwrap_or(0) as u32;
-
-                    let (name, icon_url) = store::get_skin_info(&uuid);
-                    let icon_path = store::download_single_image(&icon_url);
-                    let tier = SkinTier::from_cost(cost);
-                    skins.push(crate::riot::SkinOffer {
-                        name,
-                        cost,
-                        icon_path,
-                        tier,
-                    });
-                }
-
-                Ok::<AccountStore, String>(AccountStore {
-                    vp,
-                    rp,
-                    skins,
-                    reset_secs,
-                })
-            })
+            .spawn(async move { store::fetch_store(&yaml_path, "ap") })
             .await;
 
         match store_res {

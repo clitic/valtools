@@ -1,7 +1,63 @@
-use super::{auth, tiers::SkinTier};
-use crate::globals::{CLIENT, RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_DOWNLOADS_DIR};
+use super::auth::{self, RiotAuth};
+use crate::globals::{
+    CLIENT, RIOT_CLIENT_PLATFORM, RIOT_CLIENT_VERSION, VALTOOLS_DOWNLOADS_DIR,
+};
 use serde_json::Value;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+const VP_CURRENCY_ID: &str = "85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741";
+const RP_CURRENCY_ID: &str = "e59aa87c-4cbf-517a-5983-6e81511be9b7";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkinTier {
+    Select,
+    Deluxe,
+    Premium,
+    Exclusive,
+    Ultra,
+}
+
+impl SkinTier {
+    pub fn from_cost(cost: u32) -> Self {
+        match cost {
+            0..=875 | 1750 => Self::Select,
+            876..=1275 | 2550 => Self::Deluxe,
+            1276..=1775 | 3550 => Self::Premium,
+            2475 => Self::Ultra,
+            _ => Self::Exclusive,
+        }
+    }
+
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Select => "Select Edition",
+            Self::Deluxe => "Deluxe Edition",
+            Self::Premium => "Premium Edition",
+            Self::Exclusive => "Exclusive Edition",
+            Self::Ultra => "Ultra Edition",
+        }
+    }
+
+    pub fn color_hex(&self) -> u32 {
+        match self {
+            Self::Select => 0x5a9fe2,
+            Self::Deluxe => 0x009587,
+            Self::Premium => 0xd1548d,
+            Self::Exclusive => 0xf5955b,
+            Self::Ultra => 0xfad663,
+        }
+    }
+
+    pub fn icon_asset(&self) -> &'static str {
+        match self {
+            Self::Select => "icons/tier-select.png",
+            Self::Deluxe => "icons/tier-deluxe.png",
+            Self::Premium => "icons/tier-premium.png",
+            Self::Exclusive => "icons/tier-exclusive.png",
+            Self::Ultra => "icons/tier-ultra.png",
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct SkinOffer {
@@ -19,28 +75,95 @@ pub struct AccountStore {
     pub reset_secs: u64,
 }
 
-fn download_skin_image(url: &str, uuid: &str) -> Option<PathBuf> {
-    if url.is_empty() {
-        return None;
-    }
-    let path = VALTOOLS_DOWNLOADS_DIR.join(format!("{}.png", uuid));
+/// Fetch daily store offers and wallet balances for the saved Riot session file.
+pub fn fetch_store(yaml_path: &Path, region: &str) -> Result<AccountStore, String> {
+    let session = auth::authenticate(yaml_path)?;
+    let store_data = get_storefront(&session, region)?;
+    let (vp, rp) = get_wallet(&session, region)?;
 
-    if path.exists() {
-        return Some(path);
-    }
+    let layout = &store_data["SkinsPanelLayout"];
+    let offers = layout["SingleItemStoreOffers"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let reset_secs = layout["SingleItemOffersRemainingDurationInSeconds"]
+        .as_u64()
+        .unwrap_or(0);
 
-    let mut resp = CLIENT.get(url).call().ok()?;
-    let bytes = resp.body_mut().read_to_vec().ok()?;
-    std::fs::write(&path, &bytes).ok()?;
-    Some(path)
+    let skins = offers
+        .into_iter()
+        .map(|offer| {
+            let uuid = offer["OfferID"].as_str().unwrap_or("");
+            let cost = offer["Cost"][VP_CURRENCY_ID].as_u64().unwrap_or(0) as u32;
+            let (name, icon_url) = get_skin_info(uuid);
+            let icon_path = download_skin_image(&icon_url);
+            SkinOffer {
+                name,
+                cost,
+                icon_path,
+                tier: SkinTier::from_cost(cost),
+            }
+        })
+        .collect();
+
+    Ok(AccountStore {
+        vp,
+        rp,
+        skins,
+        reset_secs,
+    })
 }
 
-/// Download a single skin image by URL. Returns the path if successful.
-pub fn download_single_image(url: &str) -> Option<PathBuf> {
-    download_skin_image(url, icon_uuid(url))
+pub fn format_reset_time(secs: u64) -> String {
+    let h = secs / 3600;
+    let m = (secs % 3600) / 60;
+    if h > 0 {
+        format!("{}h {}m", h, m)
+    } else {
+        format!("{}m", m)
+    }
 }
 
-pub fn get_skin_info(skin_uuid: &str) -> (String, String) {
+fn with_pd_headers<B>(req: ureq::RequestBuilder<B>, session: &RiotAuth) -> ureq::RequestBuilder<B> {
+    let bearer = format!("Bearer {}", session.access_token);
+    req.header("Authorization", bearer.as_str())
+        .header("X-Riot-Entitlements-JWT", session.entitlements.as_str())
+        .header("X-Riot-ClientVersion", RIOT_CLIENT_VERSION.as_str())
+        .header("X-Riot-ClientPlatform", RIOT_CLIENT_PLATFORM.as_str())
+}
+
+fn get_storefront(session: &RiotAuth, region: &str) -> Result<Value, String> {
+    let url = format!(
+        "https://pd.{}.a.pvp.net/store/v3/storefront/{}",
+        region, session.puuid
+    );
+
+    let mut resp = with_pd_headers(CLIENT.post(&url), session)
+        .header("Content-Type", "application/json")
+        .send_json(&serde_json::json!({}))
+        .map_err(|e| e.to_string())?;
+
+    resp.body_mut().read_json().map_err(|e| e.to_string())
+}
+
+fn get_wallet(session: &RiotAuth, region: &str) -> Result<(u32, u32), String> {
+    let url = format!(
+        "https://pd.{}.a.pvp.net/store/v1/wallet/{}",
+        region, session.puuid
+    );
+
+    let mut resp = with_pd_headers(CLIENT.get(&url), session)
+        .call()
+        .map_err(|e| e.to_string())?;
+
+    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
+    let vp = resp["Balances"][VP_CURRENCY_ID].as_u64().unwrap_or(0) as u32;
+    let rp = resp["Balances"][RP_CURRENCY_ID].as_u64().unwrap_or(0) as u32;
+
+    Ok((vp, rp))
+}
+
+fn get_skin_info(skin_uuid: &str) -> (String, String) {
     let url = format!(
         "https://valorant-api.com/v1/weapons/skinlevels/{}",
         skin_uuid
@@ -63,38 +186,20 @@ pub fn get_skin_info(skin_uuid: &str) -> (String, String) {
     ("Unknown Skin".to_string(), String::new())
 }
 
-/// Extract a stable UUID from icon URL.
-/// URL format: https://media.valorant-api.com/weaponskinlevels/{uuid}/displayicon.png
-fn icon_uuid(url: &str) -> &str {
-    let mut parts = url.rsplit('/');
-    parts.next(); // skip "displayicon.png"
-    parts.next().unwrap_or("unknown")
-}
-
-fn seconds_to_hms(seconds: u64) -> String {
-    let h = seconds / 3600;
-    let m = (seconds % 3600) / 60;
-
-    if h > 0 {
-        format!("{}h {}m", h, m)
-    } else {
-        format!("{}m", m)
-    }
-}
-
-pub fn format_reset_time(secs: u64) -> String {
-    seconds_to_hms(secs)
-}
-
-/// Fetch game_id (Name#Tag) from the current active Riot session.
-pub fn fetch_game_id_from_session() -> Result<String, String> {
-    let yaml_path = &*RIOT_CLIENT_PRIVATE_SETTINGS_PATH;
-
-    if !yaml_path.exists() {
-        return Err("No active Riot session found".into());
+fn download_skin_image(url: &str) -> Option<PathBuf> {
+    if url.is_empty() {
+        return None;
     }
 
-    let tokens = auth::extract_session_tokens(yaml_path)?;
-    let (game_id, _) = auth::get_player_info_from_id_token(&tokens.id_token)?;
-    Ok(game_id)
+    // URL format: https://media.valorant-api.com/weaponskinlevels/{uuid}/displayicon.png
+    let uuid = url.rsplit('/').nth(1).unwrap_or("unknown");
+    let path = VALTOOLS_DOWNLOADS_DIR.join(format!("{}.png", uuid));
+    if path.exists() {
+        return Some(path);
+    }
+
+    let mut resp = CLIENT.get(url).call().ok()?;
+    let bytes = resp.body_mut().read_to_vec().ok()?;
+    std::fs::write(&path, &bytes).ok()?;
+    Some(path)
 }

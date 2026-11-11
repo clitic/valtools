@@ -4,6 +4,7 @@ mod app;
 mod assets;
 mod cache;
 mod globals;
+mod launcher;
 mod riot;
 mod session;
 mod theme;

@@ -6,10 +6,9 @@ use gpui_kit::component::{
 use gpui_kit::{
     div, px, rgb, svg, App, Context, IntoElement, ParentElement as _, Render, Styled as _, Window,
 };
-use std::{os::windows::process::CommandExt, path::Path, process::Command};
 
 use crate::{
-    cache, riot,
+    cache, launcher, riot,
     session::{self, Account},
     views::{
         account::render_account_row, footer::render_footer, header::render_header,
@@ -69,7 +68,7 @@ impl AppView {
             let result = cx
                 .background_executor()
                 .spawn(async move {
-                    riot::store::fetch_game_id_from_session().and_then(|game_id| {
+                    riot::auth::fetch_game_id_from_session().and_then(|game_id| {
                         session::save_current_session(&game_id)?;
                         Ok(game_id)
                     })
@@ -102,19 +101,9 @@ impl AppView {
 
         let label_clone = label.clone();
         cx.spawn(async move |this, cx| {
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-            fn is_riot_client_running() -> bool {
-                Command::new("tasklist")
-                    .args(["/FI", "IMAGENAME eq RiotClientServices.exe", "/NH"])
-                    .creation_flags(CREATE_NO_WINDOW)
-                    .output()
-                    .map(|o| String::from_utf8_lossy(&o.stdout).contains("RiotClientServices.exe"))
-                    .unwrap_or(false)
-            }
-
             let is_running = cx
                 .background_executor()
-                .spawn(async move { is_riot_client_running() })
+                .spawn(async move { launcher::is_riot_client_running() })
                 .await;
 
             if is_running {
@@ -126,20 +115,7 @@ impl AppView {
 
                 let kill_res = cx
                     .background_executor()
-                    .spawn(async move {
-                        let _ = Command::new("taskkill")
-                            .args(["/F", "/IM", "RiotClientServices.exe"])
-                            .creation_flags(CREATE_NO_WINDOW)
-                            .output();
-
-                        std::thread::sleep(std::time::Duration::from_secs(2));
-
-                        if is_riot_client_running() {
-                            Err("Riot Client is still running. Try again.".to_string())
-                        } else {
-                            Ok(())
-                        }
-                    })
+                    .spawn(async move { launcher::kill_riot_client_process() })
                     .await;
 
                 if let Err(e) = kill_res {
@@ -177,18 +153,7 @@ impl AppView {
 
             let launch_res = cx
                 .background_executor()
-                .spawn(async move {
-                    let client = Path::new("C:\\Riot Games\\Riot Client\\RiotClientServices.exe");
-                    if !client.exists() {
-                        return Err("Could not find RiotClientServices.exe".to_string());
-                    }
-
-                    Command::new(client)
-                        .creation_flags(CREATE_NO_WINDOW)
-                        .spawn()
-                        .map_err(|e| format!("Failed to launch Riot Client: {}", e))?;
-                    Ok::<(), String>(())
-                })
+                .spawn(async move { launcher::launch_riot_client() })
                 .await;
 
             if let Err(e) = launch_res {
