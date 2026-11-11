@@ -1,5 +1,5 @@
 use super::{api, auth, tiers::SkinTier};
-use crate::globals::{DOWNLOADS_DIR, PRIVATE_SETTINGS_PATH};
+use crate::globals::{RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_DOWNLOADS_DIR};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ fn download_skin_image(url: &str, uuid: &str) -> Option<PathBuf> {
     if url.is_empty() {
         return None;
     }
-    let path = DOWNLOADS_DIR.join(format!("{}.png", uuid));
+    let path = VALTOOLS_DOWNLOADS_DIR.join(format!("{}.png", uuid));
 
     if path.exists() {
         return Some(path);
@@ -84,7 +84,7 @@ pub fn format_reset_time(secs: u64) -> String {
 
 /// Fetch game_id (Name#Tag) from the current active Riot session.
 pub fn fetch_game_id_from_session() -> Result<String, String> {
-    let yaml_path = &*PRIVATE_SETTINGS_PATH;
+    let yaml_path = &*RIOT_CLIENT_PRIVATE_SETTINGS_PATH;
 
     if !yaml_path.exists() {
         return Err("No active Riot session found".into());

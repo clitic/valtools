@@ -22,7 +22,7 @@ pub struct ShopDialogView {
 
 impl ShopDialogView {
     async fn fetch_flow(label: String, this: WeakEntity<Self>, cx: &mut AsyncApp) {
-        let yaml_path = crate::globals::ACCOUNTS_DIR
+        let yaml_path = crate::globals::VALTOOLS_ACCOUNTS_DIR
             .join(&label)
             .join("RiotGamesPrivateSettings.yaml");
 

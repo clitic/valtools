@@ -1,4 +1,6 @@
-use crate::globals::{ACCOUNTS_DIR, CONFIG_PATH, PRIVATE_SETTINGS_PATH};
+use crate::globals::{
+    RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_ACCOUNTS_DIR, VALTOOLS_CONFIG_PATH,
+};
 use crate::launcher;
 use std::fs;
 
@@ -17,7 +19,7 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn load() -> Self {
-        let path = &*CONFIG_PATH;
+        let path = &*VALTOOLS_CONFIG_PATH;
         if let Ok(contents) = fs::read_to_string(path) {
             let trimmed = contents.trim();
             if !trimmed.is_empty() {
@@ -30,7 +32,7 @@ impl AppConfig {
     }
 
     pub fn save(&self) -> Result<(), String> {
-        let path = &*CONFIG_PATH;
+        let path = &*VALTOOLS_CONFIG_PATH;
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).ok();
         }
@@ -40,7 +42,7 @@ impl AppConfig {
 }
 
 pub fn list_accounts() -> Vec<Session> {
-    let accounts_dir = &*ACCOUNTS_DIR;
+    let accounts_dir = &*VALTOOLS_ACCOUNTS_DIR;
     if !accounts_dir.exists() {
         return Vec::new();
     }
@@ -74,7 +76,7 @@ pub fn prepare_new_login() -> Result<(), String> {
         launcher::kill_riot_client_process()?;
     }
 
-    let settings = &*PRIVATE_SETTINGS_PATH;
+    let settings = &*RIOT_CLIENT_PRIVATE_SETTINGS_PATH;
     if settings.exists() {
         fs::remove_file(settings).map_err(|e| format!("Failed to delete session: {}", e))?;
     }
@@ -92,12 +94,12 @@ pub fn save_current_session(label: &str) -> Result<(), String> {
         return Err("Label cannot be empty".into());
     }
 
-    let source = &*PRIVATE_SETTINGS_PATH;
+    let source = &*RIOT_CLIENT_PRIVATE_SETTINGS_PATH;
     if !source.exists() {
         return Err("No session found. Log in via Riot Client first.".into());
     }
 
-    let dest_dir = ACCOUNTS_DIR.join(label.trim());
+    let dest_dir = VALTOOLS_ACCOUNTS_DIR.join(label.trim());
     fs::create_dir_all(&dest_dir).map_err(|e| format!("Failed to create dir: {}", e))?;
 
     let dest = dest_dir.join("RiotGamesPrivateSettings.yaml");
@@ -111,14 +113,14 @@ pub fn save_current_session(label: &str) -> Result<(), String> {
 }
 
 pub fn switch_to_account(label: &str) -> Result<(), String> {
-    let backup = ACCOUNTS_DIR
+    let backup = VALTOOLS_ACCOUNTS_DIR
         .join(label)
         .join("RiotGamesPrivateSettings.yaml");
     if !backup.exists() {
         return Err(format!("No backup found for '{}'", label));
     }
 
-    let target = &*PRIVATE_SETTINGS_PATH;
+    let target = &*RIOT_CLIENT_PRIVATE_SETTINGS_PATH;
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent).ok();
     }
@@ -133,7 +135,7 @@ pub fn switch_to_account(label: &str) -> Result<(), String> {
 }
 
 pub fn delete_account(label: &str) -> Result<(), String> {
-    let account_dir = ACCOUNTS_DIR.join(label);
+    let account_dir = VALTOOLS_ACCOUNTS_DIR.join(label);
     if account_dir.exists() {
         fs::remove_dir_all(&account_dir).map_err(|e| format!("Failed to delete: {}", e))?;
     }

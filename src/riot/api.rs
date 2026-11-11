@@ -1,13 +1,13 @@
-use crate::globals::{CLIENT_VERSION, HTTP_AGENT};
+use crate::globals::{CLIENT, RIOT_CLIENT_VERSION};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
 
 pub fn agent() -> &'static ureq::Agent {
-    &HTTP_AGENT
+    &CLIENT
 }
 
 pub fn post_json(url: &str, headers: &[(&str, &str)], body: Value) -> Result<Value, String> {
-    let mut req = HTTP_AGENT.post(url);
+    let mut req = CLIENT.post(url);
     for &(k, v) in headers {
         req = req.header(k, v);
     }
@@ -16,7 +16,7 @@ pub fn post_json(url: &str, headers: &[(&str, &str)], body: Value) -> Result<Val
 }
 
 pub fn get_json(url: &str, headers: &[(&str, &str)]) -> Result<Value, String> {
-    let mut req = HTTP_AGENT.get(url);
+    let mut req = CLIENT.get(url);
     for &(k, v) in headers {
         req = req.header(k, v);
     }
@@ -26,7 +26,7 @@ pub fn get_json(url: &str, headers: &[(&str, &str)]) -> Result<Value, String> {
 
 /// Download raw bytes from a URL using the shared ureq Agent.
 pub fn download_bytes(url: &str) -> Option<Vec<u8>> {
-    let mut resp = HTTP_AGENT.get(url).call().ok()?;
+    let mut resp = CLIENT.get(url).call().ok()?;
     resp.body_mut().read_to_vec().ok()
 }
 
@@ -39,11 +39,11 @@ fn get_client_version() -> Result<String, String> {
 }
 
 pub fn cached_client_version() -> Result<String, String> {
-    if let Some(v) = CLIENT_VERSION.get() {
+    if let Some(v) = RIOT_CLIENT_VERSION.get() {
         return Ok(v.clone());
     }
     let v = get_client_version()?;
-    Ok(CLIENT_VERSION.get_or_init(|| v).clone())
+    Ok(RIOT_CLIENT_VERSION.get_or_init(|| v).clone())
 }
 
 fn platform_encoded() -> String {
