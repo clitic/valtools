@@ -1,5 +1,6 @@
-use super::{api, auth, tiers::SkinTier};
-use crate::globals::{RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_DOWNLOADS_DIR};
+use super::{auth, tiers::SkinTier};
+use crate::globals::{CLIENT, RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_DOWNLOADS_DIR};
+use serde_json::Value;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -28,7 +29,8 @@ fn download_skin_image(url: &str, uuid: &str) -> Option<PathBuf> {
         return Some(path);
     }
 
-    let bytes = api::download_bytes(url)?;
+    let mut resp = CLIENT.get(url).call().ok()?;
+    let bytes = resp.body_mut().read_to_vec().ok()?;
     std::fs::write(&path, &bytes).ok()?;
     Some(path)
 }
@@ -44,16 +46,18 @@ pub fn get_skin_info(skin_uuid: &str) -> (String, String) {
         skin_uuid
     );
 
-    if let Ok(json) = api::get_json(&url, &[]) {
-        let name = json["data"]["displayName"]
-            .as_str()
-            .unwrap_or("Unknown Skin")
-            .to_string();
-        let icon_url = json["data"]["displayIcon"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
-        return (name, icon_url);
+    if let Ok(mut resp) = CLIENT.get(&url).call() {
+        if let Ok(json) = resp.body_mut().read_json::<Value>() {
+            let name = json["data"]["displayName"]
+                .as_str()
+                .unwrap_or("Unknown Skin")
+                .to_string();
+            let icon_url = json["data"]["displayIcon"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+            return (name, icon_url);
+        }
     }
 
     ("Unknown Skin".to_string(), String::new())

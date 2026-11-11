@@ -11,7 +11,7 @@ use super::card::{render_skeleton_card, render_skin_card};
 use crate::riot::{
     api, auth,
     store::{self, AccountStore},
-    tiers,
+    tiers::SkinTier,
 };
 
 pub struct ShopDialogView {
@@ -65,7 +65,7 @@ impl ShopDialogView {
 
                     let (name, icon_url) = store::get_skin_info(&uuid);
                     let icon_path = store::download_single_image(&icon_url);
-                    let tier = tiers::get_tier_for_skin(&uuid, cost);
+                    let tier = SkinTier::from_cost(cost);
                     skins.push(crate::riot::SkinOffer {
                         name,
                         cost,

@@ -1,8 +1,7 @@
 use crate::globals::{
     RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_ACCOUNTS_DIR, VALTOOLS_CONFIG_PATH,
 };
-use crate::launcher;
-use std::fs;
+use std::{fs, os::windows::process::CommandExt, path::Path, process::Command};
 
 #[derive(Debug, Clone)]
 pub struct Session {
@@ -72,8 +71,27 @@ pub fn list_accounts() -> Vec<Session> {
 }
 
 pub fn prepare_new_login() -> Result<(), String> {
-    if launcher::is_riot_client_running() {
-        launcher::kill_riot_client_process()?;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let is_running = || {
+        Command::new("tasklist")
+            .args(["/FI", "IMAGENAME eq RiotClientServices.exe", "/NH"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).contains("RiotClientServices.exe"))
+            .unwrap_or(false)
+    };
+
+    if is_running() {
+        let _ = Command::new("taskkill")
+            .args(["/F", "/IM", "RiotClientServices.exe"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        if is_running() {
+            return Err("Riot Client is still running. Try again.".into());
+        }
     }
 
     let settings = &*RIOT_CLIENT_PRIVATE_SETTINGS_PATH;
@@ -85,7 +103,16 @@ pub fn prepare_new_login() -> Result<(), String> {
     config.active = None;
     config.save()?;
 
-    launcher::launch_riot_client()?;
+    let client = Path::new("C:\\Riot Games\\Riot Client\\RiotClientServices.exe");
+    if !client.exists() {
+        return Err("Could not find RiotClientServices.exe".into());
+    }
+
+    Command::new(client)
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .map_err(|e| format!("Failed to launch Riot Client: {}", e))?;
+
     Ok(())
 }
 

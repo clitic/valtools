@@ -1,4 +1,3 @@
-use super::api;
 use crate::globals::CLIENT;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
@@ -123,14 +122,13 @@ pub fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
 
     // Re-POST with cookies to get access_token via redirect
     let cookie_str = cookie_parts.join("; ");
-    let resp = api::post_json(
-        "https://auth.riotgames.com/api/v1/authorization",
-        &[
-            ("Cookie", cookie_str.as_str()),
-            ("Content-Type", "application/json"),
-        ],
-        body,
-    )?;
+    let mut resp = CLIENT
+        .post("https://auth.riotgames.com/api/v1/authorization")
+        .header("Cookie", cookie_str.as_str())
+        .header("Content-Type", "application/json")
+        .send_json(&body)
+        .map_err(|e| e.to_string())?;
+    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
 
     if resp["type"].as_str() == Some("response") {
         if let Some(uri) = resp["response"]["parameters"]["uri"].as_str() {
@@ -151,14 +149,13 @@ pub fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
 
 pub fn get_entitlements_token(access_token: &str) -> Result<String, String> {
     let auth = format!("Bearer {}", access_token);
-    let resp = api::post_json(
-        "https://entitlements.auth.riotgames.com/api/token/v1",
-        &[
-            ("Authorization", auth.as_str()),
-            ("Content-Type", "application/json"),
-        ],
-        serde_json::json!({}),
-    )?;
+    let mut resp = CLIENT
+        .post("https://entitlements.auth.riotgames.com/api/token/v1")
+        .header("Authorization", auth.as_str())
+        .header("Content-Type", "application/json")
+        .send_json(&serde_json::json!({}))
+        .map_err(|e| e.to_string())?;
+    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
 
     resp["entitlements_token"]
         .as_str()
@@ -168,11 +165,12 @@ pub fn get_entitlements_token(access_token: &str) -> Result<String, String> {
 
 pub fn get_player_info(access_token: &str) -> Result<(String, String), String> {
     let auth = format!("Bearer {}", access_token);
-    let resp = api::post_json(
-        "https://auth.riotgames.com/userinfo",
-        &[("Authorization", auth.as_str())],
-        serde_json::json!({}),
-    )?;
+    let mut resp = CLIENT
+        .post("https://auth.riotgames.com/userinfo")
+        .header("Authorization", auth.as_str())
+        .send_json(&serde_json::json!({}))
+        .map_err(|e| e.to_string())?;
+    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
 
     let game_name = resp["acct"]["game_name"].as_str().unwrap_or("Unknown");
     let tag_line = resp["acct"]["tag_line"].as_str().unwrap_or("0000");

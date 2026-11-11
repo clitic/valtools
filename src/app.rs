@@ -6,10 +6,10 @@ use gpui_kit::component::{
 use gpui_kit::{
     div, px, rgb, svg, App, Context, IntoElement, ParentElement as _, Render, Styled as _, Window,
 };
-use std::path::PathBuf;
+use std::{os::windows::process::CommandExt, path::Path, process::Command};
 
 use crate::{
-    cache, launcher, riot,
+    cache, riot,
     session::{self, Account},
     views::{
         account::render_account_row, footer::render_footer, header::render_header,
@@ -19,7 +19,6 @@ use crate::{
 
 pub struct AppView {
     accounts: Vec<Account>,
-    cache_paths: Vec<PathBuf>,
     cache_size_bytes: u64,
     status_message: String,
     status_is_error: bool,
@@ -28,13 +27,10 @@ pub struct AppView {
 impl AppView {
     pub fn new(_window: &mut Window, _cx: &mut Context<Self>) -> Self {
         let accounts = session::list_accounts();
-        let cache_entries = cache::list_cache_entries();
-        let cache_size_bytes = cache_entries.iter().map(|e| e.size).sum();
-        let cache_paths = cache_entries.into_iter().map(|e| e.path).collect();
+        let cache_size_bytes = cache::total_size();
 
         Self {
             accounts,
-            cache_paths,
             cache_size_bytes,
             status_message: "Ready".into(),
             status_is_error: false,
@@ -47,9 +43,7 @@ impl AppView {
     }
 
     pub fn refresh_cache(&mut self, cx: &mut Context<Self>) {
-        let cache_entries = cache::list_cache_entries();
-        self.cache_size_bytes = cache_entries.iter().map(|e| e.size).sum();
-        self.cache_paths = cache_entries.into_iter().map(|e| e.path).collect();
+        self.cache_size_bytes = cache::total_size();
         cx.notify();
     }
 
@@ -108,9 +102,19 @@ impl AppView {
 
         let label_clone = label.clone();
         cx.spawn(async move |this, cx| {
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            fn is_riot_client_running() -> bool {
+                Command::new("tasklist")
+                    .args(["/FI", "IMAGENAME eq RiotClientServices.exe", "/NH"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .output()
+                    .map(|o| String::from_utf8_lossy(&o.stdout).contains("RiotClientServices.exe"))
+                    .unwrap_or(false)
+            }
+
             let is_running = cx
                 .background_executor()
-                .spawn(async move { launcher::is_riot_client_running() })
+                .spawn(async move { is_riot_client_running() })
                 .await;
 
             if is_running {
@@ -122,7 +126,20 @@ impl AppView {
 
                 let kill_res = cx
                     .background_executor()
-                    .spawn(async move { launcher::kill_riot_client_process() })
+                    .spawn(async move {
+                        let _ = Command::new("taskkill")
+                            .args(["/F", "/IM", "RiotClientServices.exe"])
+                            .creation_flags(CREATE_NO_WINDOW)
+                            .output();
+
+                        std::thread::sleep(std::time::Duration::from_secs(2));
+
+                        if is_riot_client_running() {
+                            Err("Riot Client is still running. Try again.".to_string())
+                        } else {
+                            Ok(())
+                        }
+                    })
                     .await;
 
                 if let Err(e) = kill_res {
@@ -160,7 +177,18 @@ impl AppView {
 
             let launch_res = cx
                 .background_executor()
-                .spawn(async move { launcher::launch_riot_client() })
+                .spawn(async move {
+                    let client = Path::new("C:\\Riot Games\\Riot Client\\RiotClientServices.exe");
+                    if !client.exists() {
+                        return Err("Could not find RiotClientServices.exe".to_string());
+                    }
+
+                    Command::new(client)
+                        .creation_flags(CREATE_NO_WINDOW)
+                        .spawn()
+                        .map_err(|e| format!("Failed to launch Riot Client: {}", e))?;
+                    Ok::<(), String>(())
+                })
                 .await;
 
             if let Err(e) = launch_res {
@@ -196,7 +224,7 @@ impl AppView {
     }
 
     pub fn execute_clean_cache(&mut self, cx: &mut Context<Self>) {
-        if self.cache_paths.is_empty() {
+        if self.cache_size_bytes == 0 {
             self.status_message = "Cache is already clean".into();
             self.status_is_error = false;
             cx.notify();
@@ -207,29 +235,23 @@ impl AppView {
         self.status_is_error = false;
         cx.notify();
 
-        let paths = self.cache_paths.clone();
         cx.spawn(async move |this, cx| {
-            let (deleted, freed, errors) = cx
+            let result = cx
                 .background_executor()
-                .spawn(async move { cache::clean_entries(&paths) })
+                .spawn(async move { cache::clean() })
                 .await;
 
             this.update(cx, |this, cx| {
-                if errors.is_empty() {
-                    this.status_message = format!(
-                        "Cleaned {} items ({} freed).",
-                        deleted,
-                        cache::format_size(freed)
-                    );
-                    this.status_is_error = false;
-                } else {
-                    this.status_message = format!(
-                        "Cleaned {} items ({} freed). {} failed.",
-                        deleted,
-                        cache::format_size(freed),
-                        errors.len()
-                    );
-                    this.status_is_error = true;
+                match result {
+                    Ok(freed) => {
+                        this.status_message =
+                            format!("Cache cleaned ({} freed).", cache::format_size(freed));
+                        this.status_is_error = false;
+                    }
+                    Err(e) => {
+                        this.status_message = e;
+                        this.status_is_error = true;
+                    }
                 }
 
                 this.refresh_cache(cx);
