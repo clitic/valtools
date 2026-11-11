@@ -1,7 +1,6 @@
-use std::{
-    path::PathBuf,
-    sync::{LazyLock, OnceLock},
-};
+use base64::{engine::general_purpose::STANDARD, Engine};
+use serde_json::Value;
+use std::{path::PathBuf, sync::LazyLock};
 use ureq::Agent;
 
 pub static CLIENT: LazyLock<Agent> = LazyLock::new(|| Agent::new_with_defaults());
@@ -21,7 +20,29 @@ pub static RIOT_CLIENT_PRIVATE_SETTINGS_PATH: LazyLock<PathBuf> = LazyLock::new(
         .join("RiotGamesPrivateSettings.yaml")
 });
 
-pub static RIOT_CLIENT_VERSION: OnceLock<String> = OnceLock::new();
+pub static RIOT_CLIENT_PLATFORM: LazyLock<String> = LazyLock::new(|| {
+    STANDARD.encode(
+        serde_json::json!({
+            "platformType": "PC",
+            "platformOS": "Windows",
+            "platformOSVersion": "10.0.19042.1.256.64bit",
+            "platformChipset": "Unknown"
+        })
+        .to_string(),
+    )
+});
+
+pub static RIOT_CLIENT_VERSION: LazyLock<String> = LazyLock::new(|| {
+    if let Ok(mut resp) = CLIENT.get("https://valorant-api.com/v1/version").call() {
+        if let Ok(json) = resp.body_mut().read_json::<Value>() {
+            if let Some(version) = json["data"]["riotClientVersion"].as_str() {
+                return version.to_owned();
+            }
+        }
+    }
+
+    String::new()
+});
 
 pub static VALORANT_LOCAL_DIR: LazyLock<PathBuf> =
     LazyLock::new(|| LOCAL_APP_DATA.join("VALORANT"));

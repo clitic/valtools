@@ -43,16 +43,8 @@ impl ShopDialogView {
                 let access_token = auth::get_access_token(&tokens)?;
                 let entitlements = auth::get_entitlements_token(&access_token)?;
                 let (_game_id, puuid) = auth::get_player_info(&access_token)?;
-                let client_version = api::cached_client_version()?;
-                let store_data = api::get_storefront(
-                    &access_token,
-                    &entitlements,
-                    &puuid,
-                    &client_version,
-                    "ap",
-                )?;
-                let (vp, rp) =
-                    api::get_wallet(&access_token, &entitlements, &puuid, &client_version, "ap")?;
+                let store_data = api::get_storefront(&access_token, &entitlements, &puuid, "ap")?;
+                let (vp, rp) = api::get_wallet(&access_token, &entitlements, &puuid, "ap")?;
 
                 let offers = store_data["SkinsPanelLayout"]["SingleItemStoreOffers"]
                     .as_array()
