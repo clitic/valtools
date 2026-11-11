@@ -1,4 +1,5 @@
 use super::api;
+use crate::globals::CLIENT;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
@@ -76,7 +77,7 @@ pub fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
         "grant_type=refresh_token&client_id=riot-client&refresh_token={}",
         tokens.refresh_token
     );
-    if let Ok(mut resp) = api::agent()
+    if let Ok(mut resp) = CLIENT
         .post("https://auth.riotgames.com/token")
         .header("Content-Type", "application/x-www-form-urlencoded")
         .send(&form_body)
@@ -103,7 +104,7 @@ pub fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
     }
 
     // POST to init an auth session and capture the ssid cookie
-    if let Ok(resp) = api::agent()
+    if let Ok(resp) = CLIENT
         .post("https://auth.riotgames.com/api/v1/authorization")
         .header("Content-Type", "application/json")
         .header("Cookie", cookie_parts.join("; "))

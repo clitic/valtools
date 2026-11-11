@@ -1,10 +1,6 @@
 use crate::globals::{CLIENT, RIOT_CLIENT_PLATFORM, RIOT_CLIENT_VERSION};
 use serde_json::Value;
 
-pub fn agent() -> &'static ureq::Agent {
-    &CLIENT
-}
-
 pub fn post_json(url: &str, headers: &[(&str, &str)], body: Value) -> Result<Value, String> {
     let mut req = CLIENT.post(url);
     for &(k, v) in headers {
