@@ -76,10 +76,10 @@ pub struct AccountStore {
 }
 
 /// Fetch daily store offers and wallet balances for the saved Riot session file.
-pub fn fetch_store(yaml_path: &Path, region: &str) -> Result<AccountStore, String> {
+pub fn fetch_store(yaml_path: &Path) -> Result<AccountStore, String> {
     let session = auth::authenticate(yaml_path)?;
-    let store_data = get_storefront(&session, region)?;
-    let (vp, rp) = get_wallet(&session, region)?;
+    let store_data = get_storefront(&session)?;
+    let (vp, rp) = get_wallet(&session)?;
 
     let layout = &store_data["SkinsPanelLayout"];
     let offers = layout["SingleItemStoreOffers"]
@@ -132,10 +132,10 @@ fn with_pd_headers<B>(req: ureq::RequestBuilder<B>, session: &RiotAuth) -> ureq:
         .header("X-Riot-ClientPlatform", RIOT_CLIENT_PLATFORM.as_str())
 }
 
-fn get_storefront(session: &RiotAuth, region: &str) -> Result<Value, String> {
+fn get_storefront(session: &RiotAuth) -> Result<Value, String> {
     let url = format!(
         "https://pd.{}.a.pvp.net/store/v3/storefront/{}",
-        region, session.puuid
+        session.region, session.puuid
     );
 
     let mut resp = with_pd_headers(CLIENT.post(&url), session)
@@ -146,10 +146,10 @@ fn get_storefront(session: &RiotAuth, region: &str) -> Result<Value, String> {
     resp.body_mut().read_json().map_err(|e| e.to_string())
 }
 
-fn get_wallet(session: &RiotAuth, region: &str) -> Result<(u32, u32), String> {
+fn get_wallet(session: &RiotAuth) -> Result<(u32, u32), String> {
     let url = format!(
         "https://pd.{}.a.pvp.net/store/v1/wallet/{}",
-        region, session.puuid
+        session.region, session.puuid
     );
 
     let mut resp = with_pd_headers(CLIENT.get(&url), session)

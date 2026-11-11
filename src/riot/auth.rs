@@ -8,6 +8,7 @@ pub struct RiotAuth {
     pub access_token: String,
     pub entitlements: String,
     pub puuid: String,
+    pub region: String,
 }
 
 struct SessionTokens {
@@ -27,17 +28,19 @@ pub fn fetch_game_id_from_session() -> Result<String, String> {
     decode_game_id_from_id_token(&tokens.id_token)
 }
 
-/// Exchange saved Riot session tokens for API access token, entitlements JWT, and PUUID.
+/// Exchange saved Riot session tokens for API access token, entitlements JWT, PUUID, and region.
 pub fn authenticate(yaml_path: &Path) -> Result<RiotAuth, String> {
     let tokens = extract_session_tokens(yaml_path)?;
-    let access_token = get_access_token(&tokens)?;
+    let (access_token, id_token) = get_auth_tokens(&tokens)?;
     let entitlements = get_entitlements_token(&access_token)?;
     let puuid = get_player_puuid(&access_token)?;
+    let region = get_region(&access_token, &id_token)?;
 
     Ok(RiotAuth {
         access_token,
         entitlements,
         puuid,
+        region,
     })
 }
 
@@ -98,7 +101,7 @@ fn decode_game_id_from_id_token(id_token: &str) -> Result<String, String> {
     Ok(format!("{}#{}", game_name, tag_line))
 }
 
-fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
+fn get_auth_tokens(tokens: &SessionTokens) -> Result<(String, String), String> {
     // Strategy 1: Use the refresh_token via the OAuth2 token endpoint
     let form_body = format!(
         "grant_type=refresh_token&client_id=riot-client&refresh_token={}",
@@ -111,7 +114,11 @@ fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
     {
         if let Ok(json) = resp.body_mut().read_json::<Value>() {
             if let Some(at) = json["access_token"].as_str() {
-                return Ok(at.to_string());
+                let id_token = json["id_token"]
+                    .as_str()
+                    .unwrap_or(&tokens.id_token)
+                    .to_string();
+                return Ok((at.to_string(), id_token));
             }
         }
     }
@@ -166,7 +173,12 @@ fn get_access_token(tokens: &SessionTokens) -> Result<String, String> {
                     .filter_map(|p| p.split_once('='))
                     .collect::<HashMap<&str, &str>>();
                 if let Some(token) = params.get("access_token") {
-                    return Ok(token.to_string());
+                    let id_token = params
+                        .get("id_token")
+                        .copied()
+                        .unwrap_or(tokens.id_token.as_str())
+                        .to_string();
+                    return Ok((token.to_string(), id_token));
                 }
             }
         }
@@ -204,4 +216,25 @@ fn get_player_puuid(access_token: &str) -> Result<String, String> {
         .as_str()
         .map(|s| s.to_string())
         .ok_or_else(|| "No puuid in userinfo".to_string())
+}
+
+fn get_region(access_token: &str, id_token: &str) -> Result<String, String> {
+    let auth = format!("Bearer {}", access_token);
+    let mut resp = CLIENT
+        .put("https://riot-geo.pas.si.riotgames.com/pas/v1/product/valorant")
+        .header("Authorization", auth.as_str())
+        .header("Content-Type", "application/json")
+        .send_json(&serde_json::json!({ "id_token": id_token }))
+        .map_err(|e| e.to_string())?;
+    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
+
+    let live = resp["affinities"]["live"]
+        .as_str()
+        .ok_or_else(|| "No region affinity in response".to_string())?;
+
+    Ok(match live {
+        "latam" | "br" => "na",
+        other => other,
+    }
+    .to_string())
 }

@@ -34,7 +34,7 @@ impl ShopDialogView {
 
         let store_res = cx
             .background_executor()
-            .spawn(async move { store::fetch_store(&yaml_path, "ap") })
+            .spawn(async move { store::fetch_store(&yaml_path) })
             .await;
 
         match store_res {
