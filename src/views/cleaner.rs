@@ -1,7 +1,5 @@
-use gpui_kit::component::WindowExt as _;
-use gpui_kit::{App, Entity, Window};
-
 use crate::app::AppView;
+use gpui_kit::{component::WindowExt, App, Entity, Window};
 
 pub fn open_cleaner_dialog(
     size_str: String,

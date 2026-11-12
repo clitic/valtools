@@ -1,5 +1,8 @@
-use crate::error::{anyhow, bail, Result};
-use crate::globals::{CLIENT, RIOT_CLIENT_PRIVATE_SETTINGS_PATH};
+use crate::{
+    anyhow, bail,
+    error::Result,
+    globals::{CLIENT, RIOT_CLIENT_PRIVATE_SETTINGS_PATH},
+};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
@@ -92,8 +95,8 @@ fn decode_game_id_from_id_token(id_token: &str) -> Result<String> {
         })
         .map_err(|_| anyhow!("Failed to decode login token"))?;
 
-    let payload: Value =
-        serde_json::from_slice(&payload_bytes).map_err(|_| anyhow!("Invalid login token payload"))?;
+    let payload: Value = serde_json::from_slice(&payload_bytes)
+        .map_err(|_| anyhow!("Invalid login token payload"))?;
 
     if payload["sub"].as_str().is_none() {
         bail!("No account ID found in login token");

@@ -1,8 +1,10 @@
-use crate::error::{anyhow, bail, Result};
-use crate::globals::{RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_CONFIG_PATH, VALTOOLS_DIR};
-use crate::launcher;
-use std::fs;
-use std::path::PathBuf;
+use crate::{
+    anyhow, bail,
+    error::Result,
+    globals::{RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_CONFIG_PATH, VALTOOLS_DIR},
+    launcher,
+};
+use std::{fs, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct Session {

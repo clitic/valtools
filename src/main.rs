@@ -11,7 +11,8 @@ mod session;
 mod theme;
 mod views;
 
-use gpui_kit::*;
+use crate::app::AppView;
+use gpui_kit::{component::TitleBar, px, size, AppContext, Bounds, WindowBounds, WindowOptions};
 
 fn main() {
     std::panic::set_hook(Box::new(|info| {
@@ -27,19 +28,19 @@ fn main() {
 
             theme::apply_theme(cx);
 
-            let options = gpui_kit::WindowOptions {
+            let options = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
                     None,
                     size(px(760.0), px(580.0)),
                     cx,
                 ))),
-                titlebar: Some(gpui_kit::component::TitleBar::title_bar_options()),
+                titlebar: Some(TitleBar::title_bar_options()),
                 window_min_size: Some(size(px(600.0), px(460.0))),
                 ..Default::default()
             };
 
             gpui_kit::open_window(options, cx, |window, cx| {
-                cx.new(|cx| app::AppView::new(window, cx))
+                cx.new(|cx| AppView::new(window, cx))
             })
             .expect("Failed to open ValTools window");
         });

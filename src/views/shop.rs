@@ -1,14 +1,17 @@
-use gpui_kit::component::{
-    alert::Alert, tag::Tag, ActiveTheme as _, Icon, Sizable as _, WindowExt as _,
+use crate::{
+    riot::{store, AccountStore},
+    views::card::{render_skeleton_card, render_skin_card},
 };
-use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
-    div, px, App, AppContext as _, AsyncApp, Context, Entity, IntoElement, ParentElement as _,
-    Render, Styled as _, WeakEntity, Window,
+    assets::IconName,
+    component::{
+        alert::Alert, skeleton::Skeleton, tag::Tag, ActiveTheme, Icon, Sizable, WindowExt,
+    },
+    div,
+    prelude::FluentBuilder,
+    px, App, AppContext, AsyncApp, Context, Entity, IntoElement, ParentElement, Render, Styled,
+    WeakEntity, Window,
 };
-
-use super::card::{render_skeleton_card, render_skin_card};
-use crate::riot::{store, AccountStore};
 
 pub struct ShopDialogView {
     loading: bool,
@@ -96,32 +99,15 @@ impl Render for ShopDialogView {
                     .flex()
                     .flex_col()
                     .gap_3()
-                    // Skeletal Chips row just below title
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(
-                                gpui_kit::component::skeleton::Skeleton::new()
-                                    .h(px(24.0))
-                                    .w(px(72.0))
-                                    .rounded_full(),
-                            )
-                            .child(
-                                gpui_kit::component::skeleton::Skeleton::new()
-                                    .h(px(24.0))
-                                    .w(px(72.0))
-                                    .rounded_full(),
-                            )
-                            .child(
-                                gpui_kit::component::skeleton::Skeleton::new()
-                                    .h(px(24.0))
-                                    .w(px(108.0))
-                                    .rounded_full(),
-                            ),
+                            .child(Skeleton::new().h(px(24.0)).w(px(72.0)).rounded_full())
+                            .child(Skeleton::new().h(px(24.0)).w(px(72.0)).rounded_full())
+                            .child(Skeleton::new().h(px(24.0)).w(px(152.0)).rounded_full()),
                     )
-                    // Skeletal 2x2 Grid
                     .child(
                         div()
                             .flex()
@@ -160,41 +146,41 @@ impl Render for ShopDialogView {
                     .flex()
                     .flex_col()
                     .gap_3()
-                    // Chips row just below title (using official Tag component)
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_2()
-                            // VP Chip
                             .child(
                                 Tag::new()
                                     .rounded_full()
                                     .gap_1p5()
-                                    .child(Icon::new(gpui_kit::assets::IconName::Coins).xsmall())
+                                    .child(Icon::new(IconName::Coins).xsmall())
                                     .child(format!("{} VP", store.vp)),
                             )
-                            // RP Chip
                             .child(
                                 Tag::new()
                                     .rounded_full()
                                     .gap_1p5()
-                                    .child(Icon::new(gpui_kit::assets::IconName::Coins).xsmall())
+                                    .child(Icon::new(IconName::Coins).xsmall())
                                     .child(format!("{} RP", store.rp)),
                             )
-                            // Resets in Chip
                             .child(
                                 Tag::new()
                                     .rounded_full()
                                     .gap_1p5()
-                                    .child(Icon::new(gpui_kit::assets::IconName::Clock).xsmall())
-                                    .child(format!(
-                                        "Resets in {}",
-                                        store::format_reset_time(store.reset_secs)
-                                    )),
+                                    .child(Icon::new(IconName::Clock).xsmall())
+                                    .child(format!("Resets in {}", {
+                                        let h = store.reset_secs / 3600;
+                                        let m = (store.reset_secs % 3600) / 60;
+                                        if h > 0 {
+                                            format!("{} hrs {} mins", h, m)
+                                        } else {
+                                            format!("{} mins", m)
+                                        }
+                                    })),
                             ),
                     )
-                    // Grid 2x2
                     .child(
                         div()
                             .flex()

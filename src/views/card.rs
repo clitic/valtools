@@ -1,16 +1,17 @@
-use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::{
-    button::{Button, ButtonVariants},
-    skeleton::Skeleton,
-    tag::Tag,
-    Icon, Sizable as _, Theme,
-};
-use gpui_kit::{
-    div, img, px, rgb, ElementId, InteractiveElement as _, IntoElement, ObjectFit,
-    ParentElement as _, StatefulInteractiveElement as _, Styled as _, StyledImage as _,
-};
-
 use crate::riot::SkinOffer;
+use gpui_kit::{
+    assets::IconName,
+    base::StyledExt,
+    component::{
+        button::{Button, ButtonVariants},
+        skeleton::Skeleton,
+        tag::Tag,
+        tooltip::Tooltip,
+        Icon, Sizable, Theme,
+    },
+    div, img, px, rgb, ElementId, InteractiveElement, IntoElement, ObjectFit, ParentElement,
+    StatefulInteractiveElement, Styled, StyledImage,
+};
 
 pub fn render_skin_card(skin: &SkinOffer, index: usize, theme: &Theme) -> impl IntoElement {
     let skin_name = skin.name.clone();
@@ -52,7 +53,7 @@ pub fn render_skin_card(skin: &SkinOffer, index: usize, theme: &Theme) -> impl I
                         .object_fit(ObjectFit::Contain)
                         .into_any_element()
                 } else {
-                    Icon::new(gpui_kit::assets::IconName::Image)
+                    Icon::new(IconName::Image)
                         .text_color(theme.muted_foreground)
                         .into_any_element()
                 }),
@@ -81,8 +82,7 @@ pub fn render_skin_card(skin: &SkinOffer, index: usize, theme: &Theme) -> impl I
                             index as u64,
                         ))
                         .tooltip(move |window, cx| {
-                            gpui_kit::component::tooltip::Tooltip::new(tier.display_name())
-                                .build(window, cx)
+                            Tooltip::new(tier.display_name()).build(window, cx)
                         })
                         .child(
                             Tag::custom(

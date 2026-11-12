@@ -1,4 +1,4 @@
-use crate::error::{anyhow, Result};
+use crate::{anyhow, error::Result};
 use std::{fs, path::Path};
 
 pub fn total_size() -> u64 {

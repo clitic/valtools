@@ -47,8 +47,7 @@ pub static RIOT_CLIENT_VERSION: LazyLock<String> = LazyLock::new(|| {
 pub static VALORANT_LOCAL_DIR: LazyLock<PathBuf> =
     LazyLock::new(|| LOCAL_APP_DATA.join("VALORANT"));
 
-pub static VALTOOLS_DIR: LazyLock<PathBuf> =
-    LazyLock::new(|| LOCAL_APP_DATA.join("ValTools"));
+pub static VALTOOLS_DIR: LazyLock<PathBuf> = LazyLock::new(|| LOCAL_APP_DATA.join("ValTools"));
 
 pub static VALTOOLS_CONFIG_PATH: LazyLock<PathBuf> =
     LazyLock::new(|| VALTOOLS_DIR.join("active.txt"));

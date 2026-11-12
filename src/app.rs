@@ -1,12 +1,3 @@
-use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::{
-    scroll::ScrollableElement as _, tag::Tag, ActiveTheme as _, Icon, IconName, Sizable as _,
-    TitleBar,
-};
-use gpui_kit::{
-    div, px, rgb, svg, App, Context, IntoElement, ParentElement as _, Render, Styled as _, Window,
-};
-
 use crate::{
     cache, launcher, riot,
     session::{self, Account},
@@ -14,6 +5,12 @@ use crate::{
         account::render_account_row, footer::render_footer, header::render_header,
         shop::ShopDialogView,
     },
+};
+use gpui_kit::{
+    assets::IconName,
+    base::StyledExt,
+    component::{scroll::ScrollableElement, tag::Tag, ActiveTheme, Icon, Sizable, TitleBar},
+    div, px, rgb, svg, App, Context, IntoElement, ParentElement, Render, Styled, Window,
 };
 
 pub struct AppView {
@@ -51,8 +48,7 @@ impl AppView {
             self.status_message = e;
             self.status_is_error = true;
         } else {
-            self.status_message =
-                "Opening Riot Client, log in and save session".into();
+            self.status_message = "Opening Riot Client, log in and save session".into();
             self.status_is_error = false;
             self.refresh_accounts(cx);
         }

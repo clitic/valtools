@@ -1,11 +1,12 @@
-use gpui_kit::component::{
-    button::{Button, ButtonVariants as _},
-    Icon, IconName, Sizable as _, Theme,
+use crate::{app::AppView, views::cleaner::open_cleaner_dialog};
+use gpui_kit::{
+    assets::IconName,
+    component::{
+        button::{Button, ButtonVariants},
+        Icon, Sizable, Theme,
+    },
+    div, px, Entity, IntoElement, ParentElement, Styled,
 };
-use gpui_kit::{div, px, Entity, IntoElement, ParentElement as _, Styled as _};
-
-use super::cleaner::open_cleaner_dialog;
-use crate::app::AppView;
 
 pub fn render_footer(
     entity: Entity<AppView>,
@@ -67,7 +68,7 @@ pub fn render_footer(
                     Button::new("btn_clean_cache")
                         .ghost()
                         .small()
-                        .icon(Icon::new(gpui_kit::assets::IconName::BrushCleaning))
+                        .icon(Icon::new(IconName::BrushCleaning))
                         .tooltip(format!("Clean Cache ({})", size_str))
                         .on_click(move |_, window, cx| {
                             open_cleaner_dialog(size_str.clone(), entity.clone(), window, cx);

@@ -1,14 +1,13 @@
-use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::{
-    button::{Button, ButtonVariant, ButtonVariants},
-    Icon, Sizable as _, Theme, WindowExt as _,
-};
-use gpui_kit::{
-    div, px, ElementId, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
-    Styled as _,
-};
-
 use crate::{app::AppView, session::Account};
+use gpui_kit::{
+    assets::IconName,
+    base::StyledExt,
+    component::{
+        button::{Button, ButtonVariant, ButtonVariants},
+        Icon, Sizable, Theme, WindowExt,
+    },
+    div, px, ElementId, Entity, InteractiveElement, IntoElement, ParentElement, Styled,
+};
 
 pub fn render_account_row(
     account: &Account,
@@ -73,7 +72,7 @@ pub fn render_account_row(
                     Button::new(ElementId::NamedInteger("btn_del".into(), index as u64))
                         .ghost()
                         .small()
-                        .icon(Icon::new(gpui_kit::assets::IconName::Trash))
+                        .icon(Icon::new(IconName::Trash))
                         .tooltip("Delete Saved Session")
                         .on_click(move |_, window, cx| {
                             let entity = entity_for_del.clone();
@@ -102,7 +101,7 @@ pub fn render_account_row(
                         .secondary()
                         .small()
                         .w(px(76.0))
-                        .icon(Icon::new(gpui_kit::assets::IconName::ShoppingCart))
+                        .icon(Icon::new(IconName::ShoppingCart))
                         .label("Store")
                         .tooltip("View Daily Store")
                         .on_click(move |_, window, cx| {

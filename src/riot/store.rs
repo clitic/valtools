@@ -1,7 +1,8 @@
-use super::auth::{self, RiotAuth};
-use crate::error::{anyhow, Result};
-use crate::globals::{
-    CLIENT, RIOT_CLIENT_PLATFORM, RIOT_CLIENT_VERSION, VALTOOLS_DOWNLOADS_DIR,
+use crate::{
+    anyhow,
+    error::Result,
+    globals::{CLIENT, RIOT_CLIENT_PLATFORM, RIOT_CLIENT_VERSION, VALTOOLS_DOWNLOADS_DIR},
+    riot::auth::{self, RiotAuth},
 };
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -115,16 +116,6 @@ pub fn fetch_store(yaml_path: &Path) -> Result<AccountStore> {
     })
 }
 
-pub fn format_reset_time(secs: u64) -> String {
-    let h = secs / 3600;
-    let m = (secs % 3600) / 60;
-    if h > 0 {
-        format!("{}h {}m", h, m)
-    } else {
-        format!("{}m", m)
-    }
-}
-
 fn with_pd_headers<B>(req: ureq::RequestBuilder<B>, session: &RiotAuth) -> ureq::RequestBuilder<B> {
     let bearer = format!("Bearer {}", session.access_token);
     req.header("Authorization", bearer.as_str())
@@ -197,7 +188,7 @@ fn download_skin_image(url: &str) -> Option<PathBuf> {
         return None;
     }
 
-    // URL format: https://media.valorant-api.com/weaponskinlevels/{uuid}/displayicon.png
+    // https://media.valorant-api.com/weaponskinlevels/{uuid}/displayicon.png
     let uuid = url.rsplit('/').nth(1).unwrap_or("unknown");
     let path = VALTOOLS_DOWNLOADS_DIR.join(format!("{}.png", uuid));
     if path.exists() {

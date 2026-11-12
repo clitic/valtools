@@ -1,11 +1,13 @@
-use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::{
-    button::{Button, ButtonVariants},
-    Icon, IconName, Theme,
-};
-use gpui_kit::{div, Entity, IntoElement, ParentElement as _, Styled as _};
-
 use crate::app::AppView;
+use gpui_kit::{
+    assets::IconName,
+    base::StyledExt,
+    component::{
+        button::{Button, ButtonVariants},
+        Icon, Theme,
+    },
+    div, Entity, IntoElement, ParentElement, Styled,
+};
 
 pub fn render_header(entity: Entity<AppView>, theme: &Theme) -> impl IntoElement {
     let entity_save = entity.clone();
@@ -48,7 +50,7 @@ pub fn render_header(entity: Entity<AppView>, theme: &Theme) -> impl IntoElement
                 .child(
                     Button::new("btn_save_session")
                         .secondary()
-                        .icon(Icon::new(gpui_kit::assets::IconName::Save))
+                        .icon(Icon::new(IconName::Save))
                         .label("Save Session")
                         .tooltip("Save the current logged-in Riot session")
                         .on_click(move |_, window, cx| {
