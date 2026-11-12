@@ -3,6 +3,7 @@
 mod app;
 mod assets;
 mod cache;
+mod error;
 mod globals;
 mod launcher;
 mod riot;

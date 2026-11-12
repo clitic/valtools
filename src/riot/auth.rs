@@ -1,3 +1,4 @@
+use crate::error::{anyhow, bail, Result};
 use crate::globals::{CLIENT, RIOT_CLIENT_PRIVATE_SETTINGS_PATH};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
@@ -18,10 +19,10 @@ struct SessionTokens {
 }
 
 /// Fetch game_id (Name#Tag) from the current active Riot session.
-pub fn fetch_game_id_from_session() -> Result<String, String> {
+pub fn fetch_game_id_from_session() -> Result<String> {
     let yaml_path = &*RIOT_CLIENT_PRIVATE_SETTINGS_PATH;
     if !yaml_path.exists() {
-        return Err("No active Riot session found".into());
+        bail!("No active Riot session found");
     }
 
     let tokens = extract_session_tokens(yaml_path)?;
@@ -29,7 +30,7 @@ pub fn fetch_game_id_from_session() -> Result<String, String> {
 }
 
 /// Exchange saved Riot session tokens for API access token, entitlements JWT, PUUID, and region.
-pub fn authenticate(yaml_path: &Path) -> Result<RiotAuth, String> {
+pub fn authenticate(yaml_path: &Path) -> Result<RiotAuth> {
     let tokens = extract_session_tokens(yaml_path)?;
     let (access_token, id_token) = get_auth_tokens(&tokens)?;
     let entitlements = get_entitlements_token(&access_token)?;
@@ -44,20 +45,22 @@ pub fn authenticate(yaml_path: &Path) -> Result<RiotAuth, String> {
     })
 }
 
-fn extract_session_tokens(yaml_path: &Path) -> Result<SessionTokens, String> {
-    let content = std::fs::read_to_string(yaml_path).map_err(|e| e.to_string())?;
-    let yaml: serde_yaml::Value = serde_yaml::from_str(&content).map_err(|e| e.to_string())?;
+fn extract_session_tokens(yaml_path: &Path) -> Result<SessionTokens> {
+    let content =
+        std::fs::read_to_string(yaml_path).map_err(|_| anyhow!("Failed to read Riot session"))?;
+    let yaml: serde_yaml::Value =
+        serde_yaml::from_str(&content).map_err(|_| anyhow!("Invalid Riot session file"))?;
 
     let riot_client = &yaml["psl"]["authorization"]["riot-client"];
 
     let id_token = riot_client["id_token"]
         .as_str()
-        .ok_or_else(|| "No id_token found in settings".to_string())?
+        .ok_or_else(|| anyhow!("No login token found in session"))?
         .to_string();
 
     let refresh_token = riot_client["refresh_token"]
         .as_str()
-        .ok_or_else(|| "No refresh_token found in settings".to_string())?
+        .ok_or_else(|| anyhow!("No refresh token found in session"))?
         .to_string();
 
     let tdid = yaml["rso-authenticator"]["tdid"]["value"]
@@ -71,11 +74,11 @@ fn extract_session_tokens(yaml_path: &Path) -> Result<SessionTokens, String> {
     })
 }
 
-fn decode_game_id_from_id_token(id_token: &str) -> Result<String, String> {
+fn decode_game_id_from_id_token(id_token: &str) -> Result<String> {
     let payload_b64 = id_token
         .split('.')
         .nth(1)
-        .ok_or_else(|| "Invalid id_token format".to_string())?;
+        .ok_or_else(|| anyhow!("Invalid login token format"))?;
 
     let payload_bytes = STANDARD
         .decode(payload_b64)
@@ -87,12 +90,13 @@ fn decode_game_id_from_id_token(id_token: &str) -> Result<String, String> {
             };
             STANDARD.decode(&padded)
         })
-        .map_err(|e| format!("Failed to decode id_token: {}", e))?;
+        .map_err(|_| anyhow!("Failed to decode login token"))?;
 
-    let payload: Value = serde_json::from_slice(&payload_bytes).map_err(|e| e.to_string())?;
+    let payload: Value =
+        serde_json::from_slice(&payload_bytes).map_err(|_| anyhow!("Invalid login token payload"))?;
 
     if payload["sub"].as_str().is_none() {
-        return Err("No puuid in id_token".into());
+        bail!("No account ID found in login token");
     }
 
     let game_name = payload["acct"]["game_name"].as_str().unwrap_or("Unknown");
@@ -101,7 +105,7 @@ fn decode_game_id_from_id_token(id_token: &str) -> Result<String, String> {
     Ok(format!("{}#{}", game_name, tag_line))
 }
 
-fn get_auth_tokens(tokens: &SessionTokens) -> Result<(String, String), String> {
+fn get_auth_tokens(tokens: &SessionTokens) -> Result<(String, String)> {
     // Strategy 1: Use the refresh_token via the OAuth2 token endpoint
     let form_body = format!(
         "grant_type=refresh_token&client_id=riot-client&refresh_token={}",
@@ -162,8 +166,11 @@ fn get_auth_tokens(tokens: &SessionTokens) -> Result<(String, String), String> {
         .header("Cookie", cookie_str.as_str())
         .header("Content-Type", "application/json")
         .send_json(&body)
-        .map_err(|e| e.to_string())?;
-    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
+        .map_err(|_| anyhow!("Failed to contact Riot auth server"))?;
+    let resp: Value = resp
+        .body_mut()
+        .read_json()
+        .map_err(|_| anyhow!("Invalid response from Riot auth server"))?;
 
     if resp["type"].as_str() == Some("response") {
         if let Some(uri) = resp["response"]["parameters"]["uri"].as_str() {
@@ -184,53 +191,62 @@ fn get_auth_tokens(tokens: &SessionTokens) -> Result<(String, String), String> {
         }
     }
 
-    Err("Session expired. Log in and save session.".into())
+    bail!("Session expired, log in and save session")
 }
 
-fn get_entitlements_token(access_token: &str) -> Result<String, String> {
+fn get_entitlements_token(access_token: &str) -> Result<String> {
     let auth = format!("Bearer {}", access_token);
     let mut resp = CLIENT
         .post("https://entitlements.auth.riotgames.com/api/token/v1")
         .header("Authorization", auth.as_str())
         .header("Content-Type", "application/json")
         .send_json(&serde_json::json!({}))
-        .map_err(|e| e.to_string())?;
-    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
+        .map_err(|_| anyhow!("Failed to fetch entitlements token"))?;
+    let resp: Value = resp
+        .body_mut()
+        .read_json()
+        .map_err(|_| anyhow!("Invalid entitlements response"))?;
 
     resp["entitlements_token"]
         .as_str()
         .map(|s| s.to_string())
-        .ok_or_else(|| "No entitlements token in response".to_string())
+        .ok_or_else(|| anyhow!("No entitlements token in response"))
 }
 
-fn get_player_puuid(access_token: &str) -> Result<String, String> {
+fn get_player_puuid(access_token: &str) -> Result<String> {
     let auth = format!("Bearer {}", access_token);
     let mut resp = CLIENT
         .post("https://auth.riotgames.com/userinfo")
         .header("Authorization", auth.as_str())
         .send_json(&serde_json::json!({}))
-        .map_err(|e| e.to_string())?;
-    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
+        .map_err(|_| anyhow!("Failed to fetch player info"))?;
+    let resp: Value = resp
+        .body_mut()
+        .read_json()
+        .map_err(|_| anyhow!("Invalid player info response"))?;
 
     resp["sub"]
         .as_str()
         .map(|s| s.to_string())
-        .ok_or_else(|| "No puuid in userinfo".to_string())
+        .ok_or_else(|| anyhow!("No account ID in player info"))
 }
 
-fn get_region(access_token: &str, id_token: &str) -> Result<String, String> {
+fn get_region(access_token: &str, id_token: &str) -> Result<String> {
     let auth = format!("Bearer {}", access_token);
     let mut resp = CLIENT
         .put("https://riot-geo.pas.si.riotgames.com/pas/v1/product/valorant")
         .header("Authorization", auth.as_str())
         .header("Content-Type", "application/json")
         .send_json(&serde_json::json!({ "id_token": id_token }))
-        .map_err(|e| e.to_string())?;
-    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
+        .map_err(|_| anyhow!("Failed to fetch account region"))?;
+    let resp: Value = resp
+        .body_mut()
+        .read_json()
+        .map_err(|_| anyhow!("Invalid region response"))?;
 
     let live = resp["affinities"]["live"]
         .as_str()
-        .ok_or_else(|| "No region affinity in response".to_string())?;
+        .ok_or_else(|| anyhow!("No region affinity in response"))?;
 
     Ok(match live {
         "latam" | "br" => "na",

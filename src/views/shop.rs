@@ -18,14 +18,12 @@ pub struct ShopDialogView {
 
 impl ShopDialogView {
     async fn fetch_flow(label: String, this: WeakEntity<Self>, cx: &mut AsyncApp) {
-        let yaml_path = crate::globals::VALTOOLS_ACCOUNTS_DIR
-            .join(&label)
-            .join("RiotGamesPrivateSettings.yaml");
+        let yaml_path = crate::session::account_path(&label);
 
         if !yaml_path.exists() {
             this.update(cx, |this, cx| {
                 this.loading = false;
-                this.error = Some(format!("No saved session for '{}'.", label));
+                this.error = Some(format!("No saved session found for {}", label));
                 cx.notify();
             })
             .ok();

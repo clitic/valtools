@@ -1,4 +1,5 @@
 use super::auth::{self, RiotAuth};
+use crate::error::{anyhow, Result};
 use crate::globals::{
     CLIENT, RIOT_CLIENT_PLATFORM, RIOT_CLIENT_VERSION, VALTOOLS_DOWNLOADS_DIR,
 };
@@ -76,7 +77,7 @@ pub struct AccountStore {
 }
 
 /// Fetch daily store offers and wallet balances for the saved Riot session file.
-pub fn fetch_store(yaml_path: &Path) -> Result<AccountStore, String> {
+pub fn fetch_store(yaml_path: &Path) -> Result<AccountStore> {
     let session = auth::authenticate(yaml_path)?;
     let store_data = get_storefront(&session)?;
     let (vp, rp) = get_wallet(&session)?;
@@ -132,7 +133,7 @@ fn with_pd_headers<B>(req: ureq::RequestBuilder<B>, session: &RiotAuth) -> ureq:
         .header("X-Riot-ClientPlatform", RIOT_CLIENT_PLATFORM.as_str())
 }
 
-fn get_storefront(session: &RiotAuth) -> Result<Value, String> {
+fn get_storefront(session: &RiotAuth) -> Result<Value> {
     let url = format!(
         "https://pd.{}.a.pvp.net/store/v3/storefront/{}",
         session.region, session.puuid
@@ -141,12 +142,14 @@ fn get_storefront(session: &RiotAuth) -> Result<Value, String> {
     let mut resp = with_pd_headers(CLIENT.post(&url), session)
         .header("Content-Type", "application/json")
         .send_json(&serde_json::json!({}))
-        .map_err(|e| e.to_string())?;
+        .map_err(|_| anyhow!("Failed to fetch daily store"))?;
 
-    resp.body_mut().read_json().map_err(|e| e.to_string())
+    resp.body_mut()
+        .read_json()
+        .map_err(|_| anyhow!("Invalid daily store response"))
 }
 
-fn get_wallet(session: &RiotAuth) -> Result<(u32, u32), String> {
+fn get_wallet(session: &RiotAuth) -> Result<(u32, u32)> {
     let url = format!(
         "https://pd.{}.a.pvp.net/store/v1/wallet/{}",
         session.region, session.puuid
@@ -154,9 +157,12 @@ fn get_wallet(session: &RiotAuth) -> Result<(u32, u32), String> {
 
     let mut resp = with_pd_headers(CLIENT.get(&url), session)
         .call()
-        .map_err(|e| e.to_string())?;
+        .map_err(|_| anyhow!("Failed to fetch wallet balance"))?;
 
-    let resp: Value = resp.body_mut().read_json().map_err(|e| e.to_string())?;
+    let resp: Value = resp
+        .body_mut()
+        .read_json()
+        .map_err(|_| anyhow!("Invalid wallet response"))?;
     let vp = resp["Balances"][VP_CURRENCY_ID].as_u64().unwrap_or(0) as u32;
     let rp = resp["Balances"][RP_CURRENCY_ID].as_u64().unwrap_or(0) as u32;
 

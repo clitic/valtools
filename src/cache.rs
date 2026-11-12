@@ -1,17 +1,18 @@
+use crate::error::{anyhow, Result};
 use std::{fs, path::Path};
 
 pub fn total_size() -> u64 {
     dir_size(&crate::globals::VALORANT_LOCAL_DIR)
 }
 
-pub fn clean() -> Result<u64, String> {
+pub fn clean() -> Result<u64> {
     let dir = &*crate::globals::VALORANT_LOCAL_DIR;
     if !dir.exists() {
         return Ok(0);
     }
 
     let size = dir_size(dir);
-    fs::remove_dir_all(dir).map_err(|e| format!("Failed to clean cache: {}", e))?;
+    fs::remove_dir_all(dir).map_err(|_| anyhow!("Failed to clean cache"))?;
     Ok(size)
 }
 
