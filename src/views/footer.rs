@@ -76,7 +76,7 @@ pub fn render_footer(
                 )
                 .child(
                     Button::new("btn_github")
-                        .icon(Icon::empty().path("icons/github.svg"))
+                        .icon(Icon::default().path("icons/github.svg"))
                         .ghost()
                         .small()
                         .tooltip("Open GitHub source repository")

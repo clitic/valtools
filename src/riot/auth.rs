@@ -194,7 +194,7 @@ fn get_auth_tokens(tokens: &SessionTokens) -> Result<(String, String)> {
         }
     }
 
-    bail!("Session expired, log in and save session")
+    bail!("Your session has expired. Please log in again and save your session to continue.")
 }
 
 fn get_entitlements_token(access_token: &str) -> Result<String> {

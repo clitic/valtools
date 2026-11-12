@@ -48,7 +48,7 @@ impl AppView {
             self.status_message = e;
             self.status_is_error = true;
         } else {
-            self.status_message = "Opening Riot Client, log in and save session".into();
+            self.status_message = "Opening Riot Client, log in and save your session".into();
             self.status_is_error = false;
             self.refresh_accounts(cx);
         }
@@ -74,7 +74,7 @@ impl AppView {
             this.update(cx, |this, cx| {
                 match result {
                     Ok(game_id) => {
-                        this.status_message = format!("Saved {} session", game_id);
+                        this.status_message = format!("Session saved as '{}'", game_id);
                         this.status_is_error = false;
                         this.refresh_accounts(cx);
                     }
@@ -91,7 +91,7 @@ impl AppView {
     }
 
     pub fn switch_account(&mut self, label: String, cx: &mut Context<Self>) {
-        self.status_message = format!("Switching to {}", label);
+        self.status_message = format!("Session switching to '{}'", label);
         self.status_is_error = false;
         cx.notify();
 
@@ -126,7 +126,7 @@ impl AppView {
             }
 
             this.update(cx, |this, cx| {
-                this.status_message = format!("Applying session for {}", label_clone);
+                this.status_message = format!("Applying session for '{}'", label_clone);
                 cx.notify();
             })
             .ok();
@@ -161,7 +161,7 @@ impl AppView {
                 .ok();
             } else {
                 this.update(cx, |this, cx| {
-                    this.status_message = format!("Switched to {}", label_clone);
+                    this.status_message = format!("Session switched to '{}'", label_clone);
                     this.status_is_error = false;
                     this.refresh_accounts(cx);
                     cx.notify();
@@ -177,7 +177,7 @@ impl AppView {
             self.status_message = e;
             self.status_is_error = true;
         } else {
-            self.status_message = format!("Removed {}", label);
+            self.status_message = format!("Session removed for '{}'", label);
             self.status_is_error = false;
             self.refresh_accounts(cx);
         }
@@ -206,7 +206,7 @@ impl AppView {
                 match result {
                     Ok(freed) => {
                         this.status_message =
-                            format!("Cache cleaned ({} freed)", cache::format_size(freed));
+                            format!("Cache cleaned and {} was freed", cache::format_size(freed));
                         this.status_is_error = false;
                     }
                     Err(e) => {
