@@ -2,6 +2,6 @@
   <clipPath id="clip">
     <polygon points="8,0 180,0 180,32 172,40 0,40 0,8"/>
   </clipPath>
-  <rect width="180" height="40" fill="#BD3944" clip-path="url(#clip)"/>
-  <text x="90" y="25" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#ECE8E1" text-anchor="middle" letter-spacing="2">DOWNLOAD</text>
+  <rect width="180" height="40" fill="#FA4454" clip-path="url(#clip)"/>
+  <text x="90" y="25" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">DOWNLOAD</text>
 </svg>
