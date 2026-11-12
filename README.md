@@ -8,9 +8,8 @@
 `ValTools` is a lightweight [Valorant](https://playvalorant.com) toolkit for Windows. Switch between multiple Riot accounts without logging out, inspect your daily store offers, and clean temporary cache files — all from a clean desktop app built with Rust and GPUI.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/showcase.png" width="500px">
-  <br>
-  <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/store.png" width="500px">
+  <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/showcase.png" height="280px">
+  <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/store.png" height="280px">
   <br><br>
   <a href="https://github.com/clitic/valtools/releases/download/0.2.0/valtools-0.2.0-x86_64-pc-windows-msvc.zip">
     <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/download.svg" alt="Download" height="40px">
