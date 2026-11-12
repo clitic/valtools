@@ -2,7 +2,7 @@
 name = "valtools"
 version = "0.2.0"
 edition = "2021"
-description = "A lightweight Windows desktop toolkit for Valorant: switch Riot accounts, inspect your daily store, and clean cache"
+description = "Switch Valorant accounts, view your daily store, and clean cache"
 exclude = ["images"]
 
 [dependencies]
