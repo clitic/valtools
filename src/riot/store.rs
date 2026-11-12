@@ -1,18 +1,44 @@
 use crate::{
     anyhow,
     error::Result,
-    globals::{CLIENT, RIOT_CLIENT_PLATFORM, RIOT_CLIENT_VERSION},
+    globals::CLIENT,
     riot::{
         auth::{self, RiotAuth},
         models::AccountStore,
         skins,
     },
 };
+use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
-use std::path::Path;
+use std::{path::Path, sync::LazyLock};
 
 const VP_CURRENCY_ID: &str = "85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741";
 const RP_CURRENCY_ID: &str = "e59aa87c-4cbf-517a-5983-6e81511be9b7";
+
+static RIOT_CLIENT_PLATFORM: LazyLock<String> = LazyLock::new(|| {
+    STANDARD.encode(
+        serde_json::json!({
+            "platformType": "PC",
+            "platformOS": "Windows",
+            "platformOSVersion": "10.0.19042.1.256.64bit",
+            "platformChipset": "Unknown"
+        })
+        .to_string(),
+    )
+});
+
+static RIOT_CLIENT_VERSION: LazyLock<String> = LazyLock::new(|| {
+    let Ok(mut resp) = CLIENT.get("https://valorant-api.com/v1/version").call() else {
+        return String::new();
+    };
+    let Ok(json) = resp.body_mut().read_json::<Value>() else {
+        return String::new();
+    };
+    json["data"]["riotClientVersion"]
+        .as_str()
+        .unwrap_or("")
+        .to_owned()
+});
 
 /// Fetch daily store offers and wallet balances for the saved Riot session file.
 pub fn fetch_store(yaml_path: &Path) -> Result<AccountStore> {
@@ -27,14 +53,14 @@ fn parse_storefront(storefront: &Value, vp: u32, rp: u32) -> AccountStore {
     let layout = &storefront["SkinsPanelLayout"];
     let offers = layout["SingleItemStoreOffers"]
         .as_array()
-        .cloned()
-        .unwrap_or_default();
+        .map(Vec::as_slice)
+        .unwrap_or(&[]);
     let reset_secs = layout["SingleItemOffersRemainingDurationInSeconds"]
         .as_u64()
         .unwrap_or(0);
 
     let skins = offers
-        .into_iter()
+        .iter()
         .map(|offer| {
             let uuid = offer["OfferID"].as_str().unwrap_or("");
             let cost = offer["Cost"][VP_CURRENCY_ID].as_u64().unwrap_or(0) as u32;

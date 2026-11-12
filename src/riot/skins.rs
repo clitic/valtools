@@ -1,5 +1,5 @@
 use crate::{
-    globals::{CLIENT, VALTOOLS_DOWNLOADS_DIR},
+    globals::{CLIENT, VALTOOLS_DIR},
     riot::models::{SkinOffer, SkinTier},
 };
 use serde_json::Value;
@@ -24,21 +24,23 @@ fn fetch_skin_metadata(skin_uuid: &str) -> (String, String) {
         skin_uuid
     );
 
-    if let Ok(mut resp) = CLIENT.get(&url).call() {
-        if let Ok(json) = resp.body_mut().read_json::<Value>() {
-            let name = json["data"]["displayName"]
-                .as_str()
-                .unwrap_or("Unknown Skin")
-                .to_string();
-            let icon_url = json["data"]["displayIcon"]
-                .as_str()
-                .unwrap_or("")
-                .to_string();
-            return (name, icon_url);
-        }
-    }
+    let Ok(mut resp) = CLIENT.get(&url).call() else {
+        return ("Unknown Skin".to_string(), String::new());
+    };
+    let Ok(json) = resp.body_mut().read_json::<Value>() else {
+        return ("Unknown Skin".to_string(), String::new());
+    };
 
-    ("Unknown Skin".to_string(), String::new())
+    let name = json["data"]["displayName"]
+        .as_str()
+        .unwrap_or("Unknown Skin")
+        .to_string();
+    let icon_url = json["data"]["displayIcon"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+
+    (name, icon_url)
 }
 
 fn download_and_cache_icon(url: &str) -> Option<PathBuf> {
@@ -46,16 +48,17 @@ fn download_and_cache_icon(url: &str) -> Option<PathBuf> {
         return None;
     }
 
-    // URL format: https://media.valorant-api.com/weaponskinlevels/{uuid}/displayicon.png
+    // https://media.valorant-api.com/weaponskinlevels/{uuid}/displayicon.png
     let uuid = url.rsplit('/').nth(1).unwrap_or("unknown");
-    let path = VALTOOLS_DOWNLOADS_DIR.join(format!("{}.png", uuid));
+    let downloads_dir = VALTOOLS_DIR.join("Downloads");
+    let path = downloads_dir.join(format!("{}.png", uuid));
     if path.exists() {
         return Some(path);
     }
 
     let mut resp = CLIENT.get(url).call().ok()?;
     let bytes = resp.body_mut().read_to_vec().ok()?;
+    std::fs::create_dir_all(&downloads_dir).ok()?;
     std::fs::write(&path, &bytes).ok()?;
     Some(path)
 }
-

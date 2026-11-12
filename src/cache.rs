@@ -1,18 +1,25 @@
-use crate::{anyhow, error::Result, globals::VALORANT_LOCAL_DIR};
-use std::{fs, path::Path};
+use crate::{anyhow, error::Result, globals::LOCAL_APP_DATA};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
+fn valorant_dir() -> PathBuf {
+    LOCAL_APP_DATA.join("VALORANT")
+}
 
 pub fn total_size() -> u64 {
-    dir_size(&VALORANT_LOCAL_DIR)
+    dir_size(&valorant_dir())
 }
 
 pub fn clean() -> Result<u64> {
-    let dir = &*VALORANT_LOCAL_DIR;
+    let dir = valorant_dir();
     if !dir.exists() {
         return Ok(0);
     }
 
-    let size = dir_size(dir);
-    fs::remove_dir_all(dir).map_err(|_| anyhow!("Failed to clean cache"))?;
+    let size = dir_size(&dir);
+    fs::remove_dir_all(&dir).map_err(|_| anyhow!("Failed to clean cache"))?;
     Ok(size)
 }
 

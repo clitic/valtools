@@ -1,5 +1,8 @@
 use crate::{anyhow, bail, error::Result};
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+    Engine,
+};
 use serde_json::Value;
 use std::path::Path;
 
@@ -60,16 +63,9 @@ fn decode_jwt_payload(jwt: &str) -> Result<Value> {
         .nth(1)
         .ok_or_else(|| anyhow!("Invalid login token format"))?;
 
-    let payload_bytes = STANDARD
-        .decode(payload_b64)
-        .or_else(|_| {
-            let padded = match payload_b64.len() % 4 {
-                2 => format!("{}==", payload_b64),
-                3 => format!("{}=", payload_b64),
-                _ => payload_b64.to_string(),
-            };
-            STANDARD.decode(&padded)
-        })
+    let payload_bytes = URL_SAFE_NO_PAD
+        .decode(payload_b64.trim_end_matches('='))
+        .or_else(|_| STANDARD.decode(payload_b64))
         .map_err(|_| anyhow!("Failed to decode login token"))?;
 
     serde_json::from_slice(&payload_bytes).map_err(|_| anyhow!("Invalid login token payload"))

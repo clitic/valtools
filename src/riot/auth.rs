@@ -100,12 +100,9 @@ fn fetch_region(access_token: &str, id_token: &str) -> Result<String> {
         .as_str()
         .ok_or_else(|| anyhow!("No region affinity in response"))?;
 
-    Ok(normalize_region(live).to_string())
-}
-
-fn normalize_region(live: &str) -> &str {
-    match live {
+    Ok(match live {
         "latam" | "br" => "na",
         other => other,
     }
+    .to_string())
 }

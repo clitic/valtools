@@ -45,18 +45,16 @@ fn reauth_with_cookies(saved: &SavedTokens) -> Result<(String, String)> {
         "scope": "account openid"
     });
 
-    let mut cookies = Vec::new();
-    if let Some(tdid) = &saved.tdid {
-        cookies.push(format!("tdid={}", tdid));
-    }
-
-    // Step 1: Initialize an auth session and capture the `ssid` cookie if issued.
-    if let Some(ssid) = fetch_ssid_cookie(&cookies.join("; "), &auth_body) {
-        cookies.push(ssid);
-    }
+    // Step 1: Initialize an auth session with `tdid` and capture the `ssid` cookie if issued.
+    let tdid = saved.tdid.as_deref().map(|t| format!("tdid={}", t));
+    let ssid = fetch_ssid_cookie(tdid.as_deref(), &auth_body);
+    let cookie_header = [tdid, ssid]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join("; ");
 
     // Step 2: Re-submit with cookies so Riot returns the redirect URI containing tokens.
-    let cookie_header = cookies.join("; ");
     let mut resp = CLIENT
         .post(AUTH_SESSION_URL)
         .header("Cookie", cookie_header.as_str())
@@ -69,47 +67,38 @@ fn reauth_with_cookies(saved: &SavedTokens) -> Result<(String, String)> {
         .read_json()
         .map_err(|_| anyhow!("Invalid response from Riot auth server"))?;
 
-    if let Some(tokens) = extract_tokens_from_response(&json, &saved.id_token) {
+    if let Some(tokens) = extract_redirect_tokens(&json, &saved.id_token) {
         return Ok(tokens);
     }
 
     bail!("Your session has expired. Please log in again and save your session to continue.")
 }
 
-fn fetch_ssid_cookie(cookie_header: &str, auth_body: &Value) -> Option<String> {
-    let resp = CLIENT
+fn fetch_ssid_cookie(cookie: Option<&str>, auth_body: &Value) -> Option<String> {
+    let mut req = CLIENT
         .post(AUTH_SESSION_URL)
-        .header("Content-Type", "application/json")
-        .header("Cookie", cookie_header)
-        .send_json(auth_body)
-        .ok()?;
-
-    for header in resp.headers().get_all("set-cookie") {
-        if let Ok(value) = header.to_str() {
-            if value.starts_with("ssid=") {
-                if let Some(ssid_pair) = value.split(';').next() {
-                    return Some(ssid_pair.to_string());
-                }
-            }
-        }
+        .header("Content-Type", "application/json");
+    if let Some(c) = cookie {
+        req = req.header("Cookie", c);
     }
 
-    None
+    let resp = req.send_json(auth_body).ok()?;
+
+    resp.headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .filter_map(|s| s.split(';').next())
+        .find(|pair| pair.starts_with("ssid="))
+        .map(str::to_string)
 }
 
-fn extract_tokens_from_response(
-    resp: &Value,
-    fallback_id_token: &str,
-) -> Option<(String, String)> {
+fn extract_redirect_tokens(resp: &Value, fallback_id_token: &str) -> Option<(String, String)> {
     if resp["type"].as_str() != Some("response") {
         return None;
     }
 
     let uri = resp["response"]["parameters"]["uri"].as_str()?;
-    parse_redirect_fragment(uri, fallback_id_token)
-}
-
-fn parse_redirect_fragment(uri: &str, fallback_id_token: &str) -> Option<(String, String)> {
     let fragment = uri.split('#').nth(1)?;
     let params: HashMap<&str, &str> = fragment
         .split('&')
@@ -124,4 +113,3 @@ fn parse_redirect_fragment(uri: &str, fallback_id_token: &str) -> Option<(String
 
     Some(((*access_token).to_string(), id_token.to_string()))
 }
-

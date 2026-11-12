@@ -1,7 +1,7 @@
 use crate::{
     anyhow, bail,
     error::Result,
-    globals::{RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_CONFIG_PATH, VALTOOLS_DIR},
+    globals::{RIOT_CLIENT_PRIVATE_SETTINGS_PATH, VALTOOLS_DIR},
     launcher,
 };
 use std::{fs, path::PathBuf};
@@ -20,9 +20,13 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
+    fn path() -> PathBuf {
+        VALTOOLS_DIR.join("active.txt")
+    }
+
     pub fn load() -> Self {
-        let path = &*VALTOOLS_CONFIG_PATH;
-        if let Ok(contents) = fs::read_to_string(path) {
+        let path = Self::path();
+        if let Ok(contents) = fs::read_to_string(&path) {
             let trimmed = contents.trim();
             if !trimmed.is_empty() {
                 return AppConfig {
@@ -34,12 +38,12 @@ impl AppConfig {
     }
 
     pub fn save(&self) -> Result<()> {
-        let path = &*VALTOOLS_CONFIG_PATH;
+        let path = Self::path();
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).ok();
         }
         let contents = self.active.as_deref().unwrap_or("");
-        fs::write(path, contents).map_err(|_| anyhow!("Failed to save active account"))
+        fs::write(&path, contents).map_err(|_| anyhow!("Failed to save active account"))
     }
 }
 
