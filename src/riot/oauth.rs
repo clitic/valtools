@@ -106,10 +106,7 @@ fn extract_redirect_tokens(resp: &Value, fallback_id_token: &str) -> Option<(Str
         .collect();
 
     let access_token = params.get("access_token")?;
-    let id_token = params
-        .get("id_token")
-        .copied()
-        .unwrap_or(fallback_id_token);
+    let id_token = params.get("id_token").copied().unwrap_or(fallback_id_token);
 
     Some(((*access_token).to_string(), id_token.to_string()))
 }

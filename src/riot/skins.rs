@@ -43,7 +43,7 @@ fn fetch_skin_metadata(skin_uuid: &str) -> (String, String) {
     (name, icon_url)
 }
 
-fn download_and_cache_icon(url: &str) -> Option<PathBuf> {
+pub fn download_and_cache_icon(url: &str) -> Option<PathBuf> {
     if url.is_empty() {
         return None;
     }

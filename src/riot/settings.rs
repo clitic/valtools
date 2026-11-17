@@ -70,4 +70,3 @@ fn decode_jwt_payload(jwt: &str) -> Result<Value> {
 
     serde_json::from_slice(&payload_bytes).map_err(|_| anyhow!("Invalid login token payload"))
 }
-

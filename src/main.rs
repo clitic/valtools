@@ -31,11 +31,11 @@ fn main() {
             let options = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
                     None,
-                    size(px(760.0), px(580.0)),
+                    size(px(780.0), px(560.0)),
                     cx,
                 ))),
                 titlebar: Some(TitleBar::title_bar_options()),
-                window_min_size: Some(size(px(600.0), px(460.0))),
+                window_min_size: Some(size(px(780.0), px(560.0))),
                 ..Default::default()
             };
 

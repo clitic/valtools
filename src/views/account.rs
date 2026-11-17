@@ -103,7 +103,7 @@ pub fn render_account_row(
                         .w(px(76.0))
                         .icon(Icon::new(IconName::ShoppingCart))
                         .label("Store")
-                        .tooltip("View Daily Store")
+                        .tooltip("View Store & Accessories")
                         .on_click(move |_, window, cx| {
                             AppView::open_shop_dialog(label_for_shop.clone(), window, cx);
                         }),
