@@ -4,9 +4,11 @@ use gpui_kit::{
     base::StyledExt,
     component::{
         button::{Button, ButtonVariant, ButtonVariants},
+        tooltip::Tooltip,
         Icon, Sizable, Theme, WindowExt,
     },
-    div, px, ElementId, Entity, InteractiveElement, IntoElement, ParentElement, Styled,
+    div, px, ElementId, Entity, InteractiveElement, IntoElement, ParentElement,
+    StatefulInteractiveElement, Styled,
 };
 
 pub fn render_account_row(
@@ -20,6 +22,7 @@ pub fn render_account_row(
 
     let label_for_del = label.clone();
     let label_for_shop = label.clone();
+    let label_for_tracker = label.clone();
     let label_for_riot = label.clone();
     let entity_for_del = entity.clone();
     let entity_for_riot = entity;
@@ -51,13 +54,27 @@ pub fn render_account_row(
                 .min_w_0()
                 .child(
                     div()
+                        .id(ElementId::NamedInteger("account_name".into(), index as u64))
                         .font_medium()
                         .text_sm()
                         .truncate()
+                        .cursor_pointer()
                         .text_color(if is_active {
                             theme.foreground
                         } else {
                             theme.foreground.opacity(0.85)
+                        })
+                        .hover(|s| s.text_color(theme.primary))
+                        .tooltip(|window, cx| {
+                            Tooltip::new("Open Valorant Tracker").build(window, cx)
+                        })
+                        .on_click(move |_, _, _| {
+                            if let Ok(mut url) = url::Url::parse("https://tracker.gg/valorant/profile/riot") {
+                                if let Ok(mut segments) = url.path_segments_mut() {
+                                    segments.push(&label_for_tracker).push("overview");
+                                }
+                                let _ = open::that(url.as_str());
+                            }
                         })
                         .child(label.clone()),
                 ),
