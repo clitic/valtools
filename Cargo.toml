@@ -1,6 +1,6 @@
 [package]
 name = "valtools"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 description = "Switch Valorant accounts, view your daily store, and clean cache"
 exclude = ["images"]
