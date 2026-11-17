@@ -1,13 +1,13 @@
 [package]
 name = "valtools"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Switch Valorant accounts, view your daily store, and clean cache"
 exclude = ["images"]
 
 [dependencies]
 base64 = "0.23"
-gpui-kit = "0.9.1"
+gpui-kit = "0.10.0"
 log = "0.4"
 open = "5.4"
 serde_json = "1"
