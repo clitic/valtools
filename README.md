@@ -11,7 +11,7 @@
   <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/showcase.png" height="280px">
   <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/store.png" height="280px">
   <br>
-  <a href="https://github.com/clitic/valtools/releases/download/0.2.0/valtools-0.2.0-x86_64-pc-windows-msvc.zip">
+  <a href="https://github.com/clitic/valtools/releases/download/0.3.0/valtools-0.3.0-x86_64-pc-windows-msvc.zip">
     <img src="https://raw.githubusercontent.com/clitic/valtools/refs/heads/main/images/download.svg" alt="Download" height="40px">
   </a>
 </div>
@@ -19,8 +19,17 @@
 ## Features
 
 - **Account Switching**: Save and switch between multiple Riot accounts without re-entering credentials.
-- **Daily Store Viewer**: Check daily store offers, VP/RP balances, skin images, and prices across all saved accounts.
-- **Cache Cleaner**: Clear Valorant cache files to free up disk space while keeping your saved accounts intact.
+- **Store & Accessories**: Check daily offers, the accessory store, wallet balances, and reset timers.
+- **Valorant Tracker**: Click any account name to view stats on [tracker.gg](https://tracker.gg/valorant).
+- **Cache Cleaner**: Clear temporary Valorant cache files to free up disk space.
+
+## Uninstall
+
+ValTools is portable and requires no installation. To uninstall, delete the executable and run this in PowerShell to remove all saved sessions and data:
+
+```powershell
+Remove-Item -Path "$env:LOCALAPPDATA\ValTools" -Recurse -Force
+```
 
 ## License
 
